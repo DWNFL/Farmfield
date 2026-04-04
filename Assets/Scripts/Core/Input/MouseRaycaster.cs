@@ -1,41 +1,41 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 
 public class MouseRaycaster : MonoBehaviour
 {
-    [SerializeField]
-    private Camera sceneCamera;
-    private Vector3 lastPosition;
-    [SerializeField]
-    private LayerMask placementLayermask;
+    [SerializeField] private Camera sceneCamera;
+    [SerializeField] private LayerMask placementLayerMask;
 
-    public event Action OnClicked, OnExit;
+    private Vector3 lastPosition;
+
+    public event Action OnClicked;
+    public event Action OnExit;
 
     private void Update()
     {
-        if(Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0))
             OnClicked?.Invoke();
-        if(Input.GetKeyDown(KeyCode.Escape))
-            OnExit?.Invoke();
-    } 
 
-    public bool IsPointOverUI() 
-        => EventSystem.current.IsPointerOverGameObject();
-    
+        if (Input.GetKeyDown(KeyCode.Escape))
+            OnExit?.Invoke();
+    }
+
+    public bool IsPointerOverUI()
+    {
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+    }
 
     public Vector3 GetSelectedMapPosition()
     {
-        Vector3 mousePos = Input.mousePosition;
-        mousePos.z = sceneCamera.nearClipPlane;
-        Ray ray = sceneCamera.ScreenPointToRay(mousePos);
-        RaycastHit hit;
-        if (Physics.Raycast(ray, out hit, 100, placementLayermask))
+        Vector3 mousePosition = Input.mousePosition;
+        Ray ray = sceneCamera.ScreenPointToRay(mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, placementLayerMask))
         {
             lastPosition = hit.point;
         }
+
         return lastPosition;
     }
-
 }
