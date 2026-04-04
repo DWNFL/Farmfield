@@ -28,9 +28,8 @@ public class UIManager : MonoBehaviour
     {
         pauseUI.SetActive(false);
         isPaused = false;
-        Time.timeScale = 1f; // Возвращаем нормальный ход времени
-        Cursor.lockState = CursorLockMode.Locked; // Прячем курсор (для 3D игр)
-        Cursor.visible = false;
+        Time.timeScale = 1f;
+        // Убраны все строки с Cursor
     }
 
     public void OnGameExitPress()
@@ -42,8 +41,7 @@ public class UIManager : MonoBehaviour
     {
         pauseUI.SetActive(true);
         isPaused = true;
-        Time.timeScale = 0f; // Останавливаем время в игре
-        Cursor.lockState = CursorLockMode.None; // Показываем курсор
-        Cursor.visible = true;
+        Time.timeScale = 0f;
+        // Убраны все строки с Cursor
     }
 }
