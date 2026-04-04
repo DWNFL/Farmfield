@@ -209,7 +209,7 @@ GameObject:
   - component: {fileID: 212862261}
   - component: {fileID: 212862260}
   m_Layer: 0
-  m_Name: Plane
+  m_Name: GridVisualization
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -821,13 +821,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1662018319}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 14.44, z: 0}
+  m_LocalRotation: {x: 0.52679926, y: 0.0047471593, z: -0.0029422166, w: 0.8499714}
+  m_LocalPosition: {x: -0, y: 8.8, z: -6.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 63.58, y: 0.64, z: 0}
 --- !u!114 &1662018323
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -931,7 +931,7 @@ GameObject:
   - component: {fileID: 1758228231}
   - component: {fileID: 1758228232}
   m_Layer: 0
-  m_Name: PlacementPreview
+  m_Name: PlacementSystem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -968,6 +968,8 @@ MonoBehaviour:
   cellIndicator: {fileID: 812944699}
   mouseRaycaster: {fileID: 1693800138}
   grid: {fileID: 84353278}
+  database: {fileID: 11400000, guid: 3e15608ff9da88b4db8f4d088a263fbf, type: 2}
+  gridVisualization: {fileID: 212862258}
 --- !u!1 &2089618118
 GameObject:
   m_ObjectHideFlags: 0

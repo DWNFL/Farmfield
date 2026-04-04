@@ -1,4 +1,7 @@
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class MouseRaycaster : MonoBehaviour
 {
@@ -7,6 +10,20 @@ public class MouseRaycaster : MonoBehaviour
     private Vector3 lastPosition;
     [SerializeField]
     private LayerMask placementLayermask;
+
+    public event Action OnClicked, OnExit;
+
+    private void Update()
+    {
+        if(Input.GetMouseButtonDown(0))
+            OnClicked?.Invoke();
+        if(Input.GetKeyDown(KeyCode.Escape))
+            OnExit?.Invoke();
+    } 
+
+    public bool IsPointOverUI() 
+        => EventSystem.current.IsPointerOverGameObject();
+    
 
     public Vector3 GetSelectedMapPosition()
     {
