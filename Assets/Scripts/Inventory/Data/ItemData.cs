@@ -5,5 +5,8 @@ public class ItemData : ScriptableObject
 {
     public string itemName;
     public Sprite icon;
-    public GameObject prefab;
+
+    [Header("Placement")]
+    public bool isPlaceable;
+    public int placementID = -1;
 }
