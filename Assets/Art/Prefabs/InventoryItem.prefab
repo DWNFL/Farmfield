@@ -85,8 +85,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 8551295583683929689}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b6a82672ea215024aa91abe87653d9b8, type: 3}
+  m_Script: {fileID: 11500000, guid: 6981d938a724fcc4a9fce8fcf39cecb9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
   image: {fileID: 0}
+  item: {fileID: 0}
   parentAfterDrag: {fileID: 0}

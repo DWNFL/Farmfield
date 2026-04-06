@@ -1,69 +1,63 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class GridData
 {
-    private readonly Dictionary<Vector3Int, PlacementCellData> occupiedCells = new();
-
-    public bool CanPlaceObjectAt(Vector3Int origin, Vector2Int size)
+    Dictionary<Vector3Int, PlacementData> placedObjects = new();
+    
+    public void AddObjectAt(Vector3Int gridPosition,
+                            Vector2Int objectSize,
+                            int ID,
+                            int placedObjectIndex)
     {
-        foreach (var position in CalculatePositions(origin, size))
+        List<Vector3Int> positionToOccupy = CalculatePositions(gridPosition, objectSize);
+        PlacementData data = new PlacementData(positionToOccupy, ID, placedObjectIndex);
+        foreach (var pos in positionToOccupy)
         {
-            if (occupiedCells.ContainsKey(position))
-                return false;
-        }
-
-        return true;
-    }
-
-    public void AddObjectAt(Vector3Int origin, Vector2Int size, int objectID, GameObject placedObject)
-    {
-        foreach (var position in CalculatePositions(origin, size))
-        {
-            occupiedCells[position] = new PlacementCellData(objectID, origin, placedObject);
+            if (placedObjects.ContainsKey(pos))
+                throw new Exception($"Dictionary already contains this cell position {pos}");
+            placedObjects[pos] = data;
         }
     }
 
-    public void RemoveObjectAt(Vector3Int origin, Vector2Int size)
+    private List<Vector3Int> CalculatePositions(Vector3Int gridPosition, Vector2Int objectSize)
     {
-        foreach (var position in CalculatePositions(origin, size))
+        List<Vector3Int> returnValues = new();
+        for (int x = 0; x < objectSize.x; x++)
         {
-            occupiedCells.Remove(position);
-        }
-    }
-
-    public bool IsCellOccupied(Vector3Int position)
-    {
-        return occupiedCells.ContainsKey(position);
-    }
-
-    public bool TryGetCellData(Vector3Int position, out PlacementCellData cellData)
-    {
-        return occupiedCells.TryGetValue(position, out cellData);
-    }
-
-    private IEnumerable<Vector3Int> CalculatePositions(Vector3Int origin, Vector2Int size)
-    {
-        for (int x = 0; x < size.x; x++)
-        {
-            for (int y = 0; y < size.y; y++)
+            for (int y = 0; y < objectSize.y; y++)
             {
-                yield return origin + new Vector3Int(x, y, 0);
+                returnValues.Add(gridPosition + new Vector3Int(x, 0, y));
             }
         }
+        return returnValues;
+    }
+
+    public bool CanPlaceObjectAt(Vector3Int gridPosition, Vector2Int objectSize)
+    {
+        List<Vector3Int> positionsToOccupy = CalculatePositions(gridPosition, objectSize);
+        foreach (var pos in positionsToOccupy)
+        {
+            if (placedObjects.ContainsKey(pos))
+               return false;
+        }
+        return true;
     }
 }
 
-public readonly struct PlacementCellData
+public struct PlacementData
 {
-    public int ObjectID { get; }
-    public Vector3Int OriginCell { get; }
-    public GameObject PlacedObject { get; }
+    public List<Vector3Int> occupiedPositions; 
+    public int ID { get; private set; }
+    public int PlacedObjectIndex { get; private set;}
 
-    public PlacementCellData(int objectID, Vector3Int originCell, GameObject placedObject)
+    public PlacementData(List<Vector3Int> occupiedPositions, int objectId, int placedObjectIndex)
     {
-        ObjectID = objectID;
-        OriginCell = originCell;
-        PlacedObject = placedObject;
+        this.occupiedPositions = occupiedPositions;
+        ID = objectId;   
+        PlacedObjectIndex = placedObjectIndex;
     }
+
+
 }

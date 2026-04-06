@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 public class PlacementSystem : MonoBehaviour
@@ -6,7 +8,7 @@ public class PlacementSystem : MonoBehaviour
     [Header("Scene References")]
     [SerializeField] private Grid grid;
     [SerializeField] private MouseRaycaster mouseRaycaster;
-    [SerializeField] private ObjectDatabaseSO objectDatabase;
+    [SerializeField] private ObjectDatabaseSO database;
     [SerializeField] private InventoryManager inventoryManager;
 
     [Header("Preview")]
@@ -17,8 +19,10 @@ public class PlacementSystem : MonoBehaviour
 
     private GridData gridData;
     private ObjectData selectedObjectData;
-
+    private Renderer previewRenderer;
     private ItemData lastSelectedItem;
+
+    private List<GameObject> placedGameObjects = new();
 
     private void Awake()
     {
@@ -28,6 +32,8 @@ public class PlacementSystem : MonoBehaviour
     private void Start()
     {
         StopPlacement();
+        gridData = new GridData();
+        previewRenderer  = cellIndicator.GetComponentInChildren<Renderer>();
     }
 
     private void Update()
@@ -45,6 +51,9 @@ public class PlacementSystem : MonoBehaviour
 
         Vector3 mousePosition = mouseRaycaster.GetSelectedMapPosition();
         Vector3Int gridPosition = grid.WorldToCell(mousePosition);
+
+        bool placementValidity = CheckPlacementValidity(gridPosition);
+        previewRenderer.material.color = placementValidity ? Color.white : Color.red;
 
         if (mouseIndicator != null)
             mouseIndicator.transform.position = mousePosition;
@@ -71,7 +80,7 @@ public class PlacementSystem : MonoBehaviour
     {
         StopPlacement();
 
-        if (!objectDatabase.TryGetObjectById(placementID, out selectedObjectData))
+        if (!database.TryGetObjectById(placementID, out selectedObjectData))
         {
             Debug.LogError($"Object with ID {placementID} was not found in database.");
             return;
@@ -121,32 +130,31 @@ public class PlacementSystem : MonoBehaviour
         Vector3 mousePosition = mouseRaycaster.GetSelectedMapPosition();
         Vector3Int gridPosition = grid.WorldToCell(mousePosition);
 
-        if (!gridData.CanPlaceObjectAt(gridPosition, selectedObjectData.Size))
+        bool placementValidity = CheckPlacementValidity(gridPosition);
+        if (!placementValidity)
         {
             Debug.Log("Cannot place object here: cells are occupied.");
             return;
         }
 
-        GameObject placedObject = Instantiate(selectedObjectData.Prefab);
-        placedObject.transform.position = CalculateWorldPosition(gridPosition, selectedObjectData.Size);
+        GameObject newObject = Instantiate(selectedObjectData.Prefab);
+        newObject.transform.position = grid.CellToWorld(gridPosition);
 
-        PlaceableObject placeable = placedObject.GetComponent<PlaceableObject>();
+        placedGameObjects.Add(newObject);
+
+        gridData.AddObjectAt(gridPosition, selectedObjectData.Size, selectedObjectData.ID, placedGameObjects.Count - 1);
+
+        PlaceableObject placeable = newObject.GetComponent<PlaceableObject>();
         if (placeable != null)
         {
             placeable.OnPlaced(gridPosition);
         }
 
-        gridData.AddObjectAt(gridPosition, selectedObjectData.Size, selectedObjectData.ID, placedObject);
     }
 
-    private Vector3 CalculateWorldPosition(Vector3Int gridPosition, Vector2Int size)
+    private bool CheckPlacementValidity(Vector3Int gridPosition)
     {
-        Vector3 basePosition = grid.GetCellCenterWorld(gridPosition);
-
-        if (size == Vector2Int.one)
-            return basePosition;
-
-        Vector3 offset = new Vector3((size.x - 1) * grid.cellSize.x * 0.5f, (size.y - 1) * grid.cellSize.y * 0.5f, 0f);
-        return basePosition + offset;
+        return gridData.CanPlaceObjectAt(gridPosition, selectedObjectData.Size);
     }
+
 }
