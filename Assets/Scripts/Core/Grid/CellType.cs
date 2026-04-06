@@ -13,4 +13,11 @@ public class CellType : MonoBehaviour
     {
         
     }
+
+    public enum CellType
+    {
+        Empty,
+        Ground,
+        Soil
+    }
 }
