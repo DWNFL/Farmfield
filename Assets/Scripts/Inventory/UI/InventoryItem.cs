@@ -6,14 +6,16 @@
 
         [Header("UI")]
         public Image image;
-
-        [HideInInspector]
         public ItemData item;
         [HideInInspector] 
         public Transform parentAfterDrag;
 
+        private void Start()
+        {
+            InitialiseItem(item);
+        }
+
         public void InitialiseItem(ItemData newItemData){
-            item = newItemData;
             image.sprite = newItemData.icon;
         }
         public void OnBeginDrag(PointerEventData eventData)

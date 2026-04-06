@@ -4893,6 +4893,10 @@ PrefabInstance:
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 5462628477147789215, guid: 29db5ab7e0e8be240b75b1fe7d965a85, type: 3}
+      propertyPath: item
+      value: 
+      objectReference: {fileID: 11400000, guid: f414cf663e051174784b76cc7da2154f, type: 2}
     - target: {fileID: 6572733785187598100, guid: 29db5ab7e0e8be240b75b1fe7d965a85, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -7427,13 +7431,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1662018319}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 14.44, z: 0}
+  m_LocalRotation: {x: 0.4244226, y: 0.11515662, z: -0.05452037, w: 0.8964553}
+  m_LocalPosition: {x: -1.9, y: 5.9, z: -6.85}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 50.67, y: 14.64, z: 0}
 --- !u!114 &1662018323
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7521,7 +7525,7 @@ MonoBehaviour:
   sceneCamera: {fileID: 1662018321}
   placementLayerMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
 --- !u!4 &1693800139
 Transform:
   m_ObjectHideFlags: 0
@@ -7849,7 +7853,7 @@ GameObject:
   - component: {fileID: 1758228231}
   - component: {fileID: 1758228232}
   m_Layer: 0
-  m_Name: PlacementPreview
+  m_Name: PlacementSystem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7884,8 +7888,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlacementPreview
   grid: {fileID: 84353278}
   mouseRaycaster: {fileID: 1693800138}
-  objectDatabase: {fileID: 0}
-  gridVisualization: {fileID: 0}
+  objectDatabase: {fileID: 11400000, guid: 3e15608ff9da88b4db8f4d088a263fbf, type: 2}
+  inventoryManager: {fileID: 1127638176}
+  gridVisualization: {fileID: 212862258}
   cellIndicator: {fileID: 812944699}
   mouseIndicator: {fileID: 1233585457}
 --- !u!114 &1780462019 stripped

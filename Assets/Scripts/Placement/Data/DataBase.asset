@@ -12,4 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 499b8a417749b244596ba69418a30ab4, type: 3}
   m_Name: DataBase
   m_EditorClassIdentifier: Assembly-CSharp::ObjectDatabaseSO
-  objectsData: []
+  objectsData:
+  - <Name>k__BackingField: Cubic
+    <ID>k__BackingField: 1
+    <Size>k__BackingField: {x: 1, y: 1}
+    <Prefab>k__BackingField: {fileID: 3007605903309351385, guid: 1978bcf35192a88419245be62e237f25, type: 3}

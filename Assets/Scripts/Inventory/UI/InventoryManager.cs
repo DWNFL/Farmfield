@@ -50,4 +50,14 @@ public class InventoryManager : MonoBehaviour
         InventoryItem inventoryItem = newItem.GetComponentInChildren<InventoryItem>(); 
         inventoryItem.InitialiseItem(item);
     }
+
+    public ItemData GetSelectedItem()
+    {
+        if (selectedSlot < 0  || selectedSlot >= inventorySlots.Length)
+            return null;
+
+            var item = inventorySlots[selectedSlot].GetComponentInChildren<InventoryItem>();   
+
+            return item != null ? item.item : null;
+    }
 }

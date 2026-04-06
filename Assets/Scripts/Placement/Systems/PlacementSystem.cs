@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class PlacementSystem : MonoBehaviour
@@ -6,14 +7,18 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private Grid grid;
     [SerializeField] private MouseRaycaster mouseRaycaster;
     [SerializeField] private ObjectDatabaseSO objectDatabase;
+    [SerializeField] private InventoryManager inventoryManager;
 
     [Header("Preview")]
     [SerializeField] private GameObject gridVisualization;
     [SerializeField] private GameObject cellIndicator;
     [SerializeField] private GameObject mouseIndicator;
 
+
     private GridData gridData;
     private ObjectData selectedObjectData;
+
+    private ItemData lastSelectedItem;
 
     private void Awake()
     {
@@ -27,6 +32,14 @@ public class PlacementSystem : MonoBehaviour
 
     private void Update()
     {
+        ItemData currentItem = inventoryManager.GetSelectedItem();
+
+        if (currentItem != lastSelectedItem)
+        {
+            lastSelectedItem = currentItem;
+            HandleSelectedItem(currentItem);
+        }
+
         if (selectedObjectData == null)
             return;
 
@@ -38,6 +51,20 @@ public class PlacementSystem : MonoBehaviour
 
         if (cellIndicator != null)
             cellIndicator.transform.position = grid.GetCellCenterWorld(gridPosition);
+    }
+
+    private void HandleSelectedItem(ItemData item)
+    {
+        if (item == null)
+        {
+            StopPlacement();
+            return;
+        }
+    
+        if (item.isPlaceable)
+            StartPlacement(item.placementID);
+        else
+            StopPlacement();
     }
 
     public void StartPlacement(int placementID)
