@@ -5642,7 +5642,7 @@ GameObject:
   - component: {fileID: 1335306434}
   - component: {fileID: 1335306433}
   - component: {fileID: 1335306432}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Ground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7525,7 +7525,7 @@ MonoBehaviour:
   sceneCamera: {fileID: 1662018321}
   placementLayerMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 9
 --- !u!4 &1693800139
 Transform:
   m_ObjectHideFlags: 0
