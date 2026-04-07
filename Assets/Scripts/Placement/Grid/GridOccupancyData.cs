@@ -2,17 +2,17 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GridData
+public class GridOccupancyData
 {
-    Dictionary<Vector3Int, PlacementData> placedObjects = new();
+    Dictionary<Vector3Int, OccupancyData> placedObjects = new();
     
     public void AddObjectAt(Vector3Int gridPosition,
                             Vector2Int objectSize,
-                            int ID,
+                            int itemID,
                             int placedObjectIndex)
     {
         List<Vector3Int> positionToOccupy = CalculatePositions(gridPosition, objectSize);
-        PlacementData data = new PlacementData(positionToOccupy, ID, placedObjectIndex);
+        OccupancyData data = new OccupancyData(positionToOccupy, itemID, placedObjectIndex);
         foreach (var pos in positionToOccupy)
         {
             if (placedObjects.ContainsKey(pos))
@@ -46,16 +46,16 @@ public class GridData
     }
 }
 
-public struct PlacementData
+public struct OccupancyData
 {
     public List<Vector3Int> occupiedPositions; 
-    public int ID { get; private set; }
+    public int ItemID { get; private set; }
     public int PlacedObjectIndex { get; private set;}
 
-    public PlacementData(List<Vector3Int> occupiedPositions, int objectId, int placedObjectIndex)
+    public OccupancyData(List<Vector3Int> occupiedPositions, int itemId, int placedObjectIndex)
     {
         this.occupiedPositions = occupiedPositions;
-        ID = objectId;   
+        ItemID = itemId;   
         PlacedObjectIndex = placedObjectIndex;
     }
 

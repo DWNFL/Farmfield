@@ -8,7 +8,6 @@ public class PlacementSystem : MonoBehaviour
     [Header("Scene References")]
     [SerializeField] private Grid grid;
     [SerializeField] private MouseRaycaster mouseRaycaster;
-    [SerializeField] private ObjectDatabaseSO database;
     [SerializeField] private InventoryManager inventoryManager;
 
     [Header("Preview")]
@@ -17,28 +16,27 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private GameObject mouseIndicator;
 
 
-    private GridData gridData;
-    private ObjectData selectedObjectData;
+    private GridOccupancyData gridOccupancyData;
+    private PlaceableItemData selectedPlaceableItem;
     private Renderer previewRenderer;
-    private ItemData lastSelectedItem;
+    private Item lastSelectedItem;
 
     private List<GameObject> placedGameObjects = new();
 
     private void Awake()
     {
-        gridData = new GridData();
+        gridOccupancyData = new GridOccupancyData();
+        previewRenderer  = cellIndicator.GetComponentInChildren<Renderer>();
     }
 
     private void Start()
     {
         StopPlacement();
-        gridData = new GridData();
-        previewRenderer  = cellIndicator.GetComponentInChildren<Renderer>();
     }
 
     private void Update()
     {
-        ItemData currentItem = inventoryManager.GetSelectedItem();
+        Item currentItem = inventoryManager.GetSelectedItem();
 
         if (currentItem != lastSelectedItem)
         {
@@ -46,7 +44,7 @@ public class PlacementSystem : MonoBehaviour
             HandleSelectedItem(currentItem);
         }
 
-        if (selectedObjectData == null)
+        if (selectedPlaceableItem == null)
             return;
 
         Vector3 mousePosition = mouseRaycaster.GetSelectedMapPosition();
@@ -62,7 +60,7 @@ public class PlacementSystem : MonoBehaviour
             cellIndicator.transform.position = grid.GetCellCenterWorld(gridPosition);
     }
 
-    private void HandleSelectedItem(ItemData item)
+    private void HandleSelectedItem(Item item)
     {
         if (item == null)
         {
@@ -70,21 +68,23 @@ public class PlacementSystem : MonoBehaviour
             return;
         }
     
-        if (item.isPlaceable)
-            StartPlacement(item.placementID);
+        if (item.IsPlaceable)
+            StartPlacement(item.PlaceableData);
         else
             StopPlacement();
     }
 
-    public void StartPlacement(int placementID)
+    public void StartPlacement(PlaceableItemData placeableItemData)
     {
         StopPlacement();
 
-        if (!database.TryGetObjectById(placementID, out selectedObjectData))
+        if (placeableItemData == null)
         {
-            Debug.LogError($"Object with ID {placementID} was not found in database.");
+            Debug.LogError($"Placeable data is null.");
             return;
         }
+
+        selectedPlaceableItem = placeableItemData;
 
         if (gridVisualization != null)
             gridVisualization.SetActive(true);
@@ -101,7 +101,7 @@ public class PlacementSystem : MonoBehaviour
 
     public void StopPlacement()
     {
-        selectedObjectData = null;
+        selectedPlaceableItem = null;
 
         if (gridVisualization != null)
             gridVisualization.SetActive(false);
@@ -121,7 +121,7 @@ public class PlacementSystem : MonoBehaviour
 
     private void PlaceObject()
     {
-        if (selectedObjectData == null)
+        if (selectedPlaceableItem == null)
             return;
 
         if (mouseRaycaster.IsPointerOverUI())
@@ -137,24 +137,26 @@ public class PlacementSystem : MonoBehaviour
             return;
         }
 
-        GameObject newObject = Instantiate(selectedObjectData.Prefab);
+        GameObject newObject = Instantiate(selectedPlaceableItem.Prefab);
         newObject.transform.position = grid.CellToWorld(gridPosition);
 
         placedGameObjects.Add(newObject);
 
-        gridData.AddObjectAt(gridPosition, selectedObjectData.Size, selectedObjectData.ID, placedGameObjects.Count - 1);
+        gridOccupancyData.AddObjectAt(gridPosition, selectedPlaceableItem.Size, lastSelectedItem.ID, placedGameObjects.Count - 1);
 
-        PlaceableObject placeable = newObject.GetComponent<PlaceableObject>();
-        if (placeable != null)
-        {
-            placeable.OnPlaced(gridPosition);
-        }
+        // КОГДА СДЕЛАЕИ ИНТЕРФЕЙС IPLACEABLE
+
+        // IPlaceable placeable = newObject.GetComponent<IPlaceable>();
+        // if (placeable != null)
+        // {
+        //    placeable.OnPlaced(gridPosition);
+        // }
 
     }
 
     private bool CheckPlacementValidity(Vector3Int gridPosition)
     {
-        return gridData.CanPlaceObjectAt(gridPosition, selectedObjectData.Size);
+        return gridOccupancyData.CanPlaceObjectAt(gridPosition, selectedPlaceableItem.Size);
     }
 
 }

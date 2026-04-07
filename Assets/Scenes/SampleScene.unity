@@ -4434,7 +4434,7 @@ MonoBehaviour:
   - {fileID: 313207188}
   - {fileID: 836951132}
   - {fileID: 1577950699}
-  inventoryItemPrefab: {fileID: 0}
+  inventoryItemPrefab: {fileID: 8551295583683929689, guid: 8bc6f58771fb4724aacea8a363c16fa3, type: 3}
 --- !u!1 &1148259931
 GameObject:
   m_ObjectHideFlags: 0
@@ -4896,7 +4896,7 @@ PrefabInstance:
     - target: {fileID: 5462628477147789215, guid: 29db5ab7e0e8be240b75b1fe7d965a85, type: 3}
       propertyPath: item
       value: 
-      objectReference: {fileID: 11400000, guid: f414cf663e051174784b76cc7da2154f, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 6572733785187598100, guid: 29db5ab7e0e8be240b75b1fe7d965a85, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -7888,7 +7888,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlacementPreview
   grid: {fileID: 84353278}
   mouseRaycaster: {fileID: 1693800138}
-  objectDatabase: {fileID: 11400000, guid: 3e15608ff9da88b4db8f4d088a263fbf, type: 2}
   inventoryManager: {fileID: 1127638176}
   gridVisualization: {fileID: 212862258}
   cellIndicator: {fileID: 812944699}

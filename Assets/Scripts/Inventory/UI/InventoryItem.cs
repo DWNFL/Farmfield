@@ -3,20 +3,32 @@
     using UnityEngine.UI;
     public class InventoryItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
+        private Image image;
 
-        [Header("UI")]
-        public Image image;
-        public ItemData item;
+        //Для теста можно прописать [SerializeField] чтобы дать слоту предмет
+        private Item item;
+        public Item Item => item;
+        
         [HideInInspector] 
         public Transform parentAfterDrag;
 
+        private void Awake()
+        {
+            image = GetComponent<Image>();
+        }
+        // Для теста start нужен так как итемам пока неоткуда браться
         private void Start()
         {
             InitialiseItem(item);
         }
 
-        public void InitialiseItem(ItemData newItemData){
-            image.sprite = newItemData.icon;
+        public void InitialiseItem(Item newItemData)
+        {
+            if (newItemData == null || image == null)
+                return;
+
+            item = newItemData;
+            image.sprite = newItemData.Icon;
         }
         public void OnBeginDrag(PointerEventData eventData)
         {
