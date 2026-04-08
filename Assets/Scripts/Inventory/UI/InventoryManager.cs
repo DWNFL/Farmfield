@@ -4,9 +4,33 @@ public class InventoryManager : MonoBehaviour
 {
     [SerializeField] private InventorySlot[] inventorySlots;
     [SerializeField] private GameObject inventoryItemPrefab;
+    [SerializeField] private Item[] startingItems; // <--- ДОБАВЛЕНО
     int selectedSlot = -1;
 
+    public static InventoryManager Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
+
     private void Start(){
+        // Выдаем стартовые предметы (например, семена картошки)
+        if (startingItems != null)
+        {
+            foreach (var item in startingItems)
+            {
+                if (item != null) AddItem(item);
+            }
+        }
+
         ChangeSelectedSlot(0);
     }
 

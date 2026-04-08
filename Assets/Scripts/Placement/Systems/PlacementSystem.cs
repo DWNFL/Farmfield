@@ -143,9 +143,17 @@ public class PlacementSystem : MonoBehaviour
         placedGameObjects.Add(newObject);
 
         gridOccupancyData.AddObjectAt(gridPosition, selectedPlaceableItem.Size, lastSelectedItem.ID, placedGameObjects.Count - 1);
+        if (selectedPlaceableItem is PlantPlaceableItemData plantData)
+        {
+            PlacedPlantBehaviour plantBehaviour = newObject.GetComponent<PlacedPlantBehaviour>();
+            if (plantBehaviour == null)
+            {
+                plantBehaviour = newObject.AddComponent<PlacedPlantBehaviour>();
+            }
+            plantBehaviour.Init(plantData);
+        }
 
         // КОГДА СДЕЛАЕИ ИНТЕРФЕЙС IPLACEABLE
-
         // IPlaceable placeable = newObject.GetComponent<IPlaceable>();
         // if (placeable != null)
         // {
