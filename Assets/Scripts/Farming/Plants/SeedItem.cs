@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Inventory/Seed Item")]
+[CreateAssetMenu(menuName = "Items/Seed Item")]
 public class SeedItem : SellableItem
 {
     // Пока дополнительных полей не нужно, 

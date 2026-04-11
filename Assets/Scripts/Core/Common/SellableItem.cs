@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Inventory/Sellable Item")]
+[CreateAssetMenu(menuName = "Items/Sellable Item")]
 public class SellableItem : Item
 {
     [Header("Trading")]

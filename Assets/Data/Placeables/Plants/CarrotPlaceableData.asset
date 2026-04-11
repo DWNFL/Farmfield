@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4db3e8af699d32e4987a673e9bb7037d, type: 3}
-  m_Name: PotatoPlaceble
+  m_Name: CarrotPlaceableData
   m_EditorClassIdentifier: Assembly-CSharp::PlantPlaceableItemData
-  <Name>k__BackingField: 
+  <Name>k__BackingField: Carrot
   <Size>k__BackingField: {x: 1, y: 1}
-  <Prefab>k__BackingField: {fileID: 0}
-  <GrowthConfig>k__BackingField: {fileID: 0}
+  <Prefab>k__BackingField: {fileID: 3208448470510269874, guid: f77da45c8e232324c91f94484e27d919, type: 3}
+  <GrowthConfig>k__BackingField: {fileID: 11400000, guid: 9b20234a3e4f5b54ba9a730e93c33f78, type: 2}

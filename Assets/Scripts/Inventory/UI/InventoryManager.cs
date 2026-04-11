@@ -4,7 +4,7 @@ public class InventoryManager : MonoBehaviour
 {
     [SerializeField] private InventorySlot[] inventorySlots;
     [SerializeField] private GameObject inventoryItemPrefab;
-    [SerializeField] private Item[] startingItems; // <--- ДОБАВЛЕНО
+    [SerializeField] private Item[] startingItems; // <--- ДОБАВЛЕНО ДЛЯ ТЕСТА
     int selectedSlot = -1;
 
     public static InventoryManager Instance { get; private set; }

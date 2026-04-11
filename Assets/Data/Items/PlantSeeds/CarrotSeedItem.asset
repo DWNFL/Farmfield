@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 485749ead93305c41894d6cb8615ae18, type: 3}
-  m_Name: PotatoSeedItem
+  m_Name: CarrotSeedItem
   m_EditorClassIdentifier: Assembly-CSharp::SeedItem
-  ID: 0
-  ItemName: 
-  Icon: {fileID: 0}
+  ID: 101
+  ItemName: Carrot Seed
+  Icon: {fileID: 21300000, guid: 4fddb881dc56a42cda0912425a4fec0b, type: 3}
   Stackable: 1
   MaxStack: 99
-  PlaceableData: {fileID: 0}
+  PlaceableData: {fileID: 11400000, guid: a5fa163612c6e54429c504a7596790f6, type: 2}
   Price: 0

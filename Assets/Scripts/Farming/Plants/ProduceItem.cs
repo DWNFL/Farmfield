@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Inventory/Produce Item")]
+[CreateAssetMenu(menuName = "Items/Produce Item")]
 public class ProduceItem : SellableItem
 {
     // Сюда в будущем можно будет добавить параметры еды: 
