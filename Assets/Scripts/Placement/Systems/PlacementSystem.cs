@@ -152,6 +152,15 @@ public class PlacementSystem : MonoBehaviour
             }
             plantBehaviour.Init(plantData);
         }
+        else if (selectedPlaceableItem is StationPlaceableItemData stationData)
+        {
+            PlacedStationBehaviour stationBehaviour = newObject.GetComponent<PlacedStationBehaviour>();
+            if (stationBehaviour == null)
+            {
+                stationBehaviour = newObject.AddComponent<PlacedStationBehaviour>();
+            }
+            stationBehaviour.Init(stationData);
+        }
 
         // КОГДА СДЕЛАЕИ ИНТЕРФЕЙС IPLACEABLE
         // IPlaceable placeable = newObject.GetComponent<IPlaceable>();

@@ -4430,6 +4430,7 @@ MonoBehaviour:
   startingItems:
   - {fileID: 11400000, guid: 17ab8cffddab3d749844dbaa39220695, type: 2}
   - {fileID: 11400000, guid: 17733b9485e57004ba92a033859a63cc, type: 2}
+  - {fileID: 11400000, guid: 9974efc104e570744883cd336f1209a3, type: 2}
 --- !u!1 &1148259931
 GameObject:
   m_ObjectHideFlags: 0

@@ -74,6 +74,49 @@ public class InventoryManager : MonoBehaviour
         inventoryItem.InitialiseItem(item);
     }
 
+    /// <summary>
+    /// Проверяет, есть ли в инвентаре нужное количество предметов.
+    /// </summary>
+    public bool HasItems(Item item, int count)
+    {
+        if (item == null || count <= 0) return false;
+
+        int found = 0;
+        for (int i = 0; i < inventorySlots.Length; i++)
+        {
+            InventoryItem itemInSlot = inventorySlots[i].GetComponentInChildren<InventoryItem>();
+            if (itemInSlot != null && itemInSlot.Item == item)
+            {
+                found++;
+                if (found >= count) return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Списывает нужное количество предметов из инвентаря.
+    /// Возвращает true если успешно списано.
+    /// </summary>
+    public bool RemoveItems(Item item, int count)
+    {
+        if (!HasItems(item, count)) return false;
+
+        int remaining = count;
+        for (int i = 0; i < inventorySlots.Length && remaining > 0; i++)
+        {
+            InventoryItem itemInSlot = inventorySlots[i].GetComponentInChildren<InventoryItem>();
+            if (itemInSlot != null && itemInSlot.Item == item)
+            {
+                Destroy(itemInSlot.gameObject);
+                remaining--;
+            }
+        }
+
+        return true;
+    }
+
     public Item GetSelectedItem()
     {
         if (selectedSlot < 0  || selectedSlot >= inventorySlots.Length)
