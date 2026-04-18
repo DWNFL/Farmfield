@@ -9,4 +9,10 @@ public class ToolItem : Item
 
     // В будущем сюда можно добавить прочность (Durability), 
     // Тир инструмента (Tier) или затрачиваемую энергию.
+
+    private void OnEnable()
+    {
+        // Убедитесь, что инструмент не является "placeable"
+        PlaceableData = null;
+    }
 }

@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2979271695675779961}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: 'Carrot 2 Root '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -42,7 +42,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4140145745326186090}
   - component: {fileID: 5576119362899888095}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Carrot 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}

@@ -44,6 +44,17 @@ public class GridOccupancyData
         }
         return true;
     }
+
+    public void RemoveObjectAt(Vector3Int gridPosition)
+    {
+        if (!placedObjects.TryGetValue(gridPosition, out OccupancyData data))
+            return;
+
+        foreach (var pos in data.occupiedPositions)
+        {
+            placedObjects.Remove(pos);
+        }
+    }
 }
 
 public struct OccupancyData

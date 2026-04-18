@@ -9,18 +9,20 @@ public class PlacedPlantBehaviour : MonoBehaviour
     public void Init(PlantPlaceableItemData data, PlantRuntimeState existingState = null)
     {
         plantData = data;
-        
+
         if (existingState != null)
         {
             state = existingState;
         }
         else
         {
-            state = new PlantRuntimeState();
-            state.CurrentStageIndex = 0;
-            state.TimeInCurrentStage = 0f;
-            state.HarvestCount = 0;
-            state.IsInFruitStage = false; 
+            state = new PlantRuntimeState
+            {
+                CurrentStageIndex = 0,
+                TimeInCurrentStage = 0f,
+                HarvestCount = 0,
+                IsInFruitStage = false
+            };
         }
 
         UpdateVisual();
@@ -29,19 +31,18 @@ public class PlacedPlantBehaviour : MonoBehaviour
     private void Update()
     {
         if (plantData == null || plantData.GrowthConfig == null) return;
-        
+
         var config = plantData.GrowthConfig;
-        
-        // Остановка, если исчерпан лимит урожая (для кустов типа помидоров)
-        if (config.IsRegrowable && state.HarvestCount >= config.MaxHarvestsPerPlant) return; 
+
+        // Stop growth if regrow plant has reached harvest limit.
+        if (config.IsRegrowable && state.HarvestCount >= config.MaxHarvestsPerPlant) return;
 
         var stages = state.IsInFruitStage ? config.FruitStages : config.GrowthStages;
         if (stages == null || stages.Length == 0) return;
 
-        // Проверка, дошли ли мы до последней стадии текущего этапа роста
         if (state.CurrentStageIndex >= stages.Length - 1)
         {
-            // Если выросли и это многоразовый куст с плодами - переходим на рост плодов
+            // Transition from base growth to fruit growth for regrowable plants.
             if (!state.IsInFruitStage && config.IsRegrowable && config.FruitStages != null && config.FruitStages.Length > 0)
             {
                 state.IsInFruitStage = true;
@@ -49,7 +50,7 @@ public class PlacedPlantBehaviour : MonoBehaviour
                 state.TimeInCurrentStage = 0f;
                 UpdateVisual();
             }
-            return; // Достигли конца массива, просто ждем урожая
+            return;
         }
 
         state.TimeInCurrentStage += Time.deltaTime;
@@ -66,7 +67,7 @@ public class PlacedPlantBehaviour : MonoBehaviour
     {
         var config = plantData.GrowthConfig;
         var stages = state.IsInFruitStage ? config.FruitStages : config.GrowthStages;
-        
+
         if (stages == null || stages.Length == 0) return;
 
         int indexToCheck = Mathf.Min(state.CurrentStageIndex, stages.Length - 1);
@@ -78,6 +79,7 @@ public class PlacedPlantBehaviour : MonoBehaviour
             {
                 Destroy(currentVisual);
             }
+
             currentVisual = Instantiate(prefabToSpawn, transform);
             currentVisual.transform.localPosition = Vector3.zero;
             currentVisual.transform.localRotation = Quaternion.identity;
@@ -96,67 +98,109 @@ public class PlacedPlantBehaviour : MonoBehaviour
         {
             return state.CurrentStageIndex >= config.FruitStages.Length - 1;
         }
-        else
-        {
-            // Нельзя собрать из обычных стадий, если есть стадии плодов
-            if (config.IsRegrowable && config.FruitStages != null && config.FruitStages.Length > 0) 
-                return false; 
-            
-            return state.CurrentStageIndex >= config.GrowthStages.Length - 1;
-        }
+
+        // If plant has dedicated fruit stages, harvest should happen there only.
+        if (config.IsRegrowable && config.FruitStages != null && config.FruitStages.Length > 0)
+            return false;
+
+        return state.CurrentStageIndex >= config.GrowthStages.Length - 1;
     }
 
-    [ContextMenu("Собрать урожай (Harvest)")]
+    [ContextMenu("Harvest")]
     public void Harvest()
+    {
+        HandlePlantInteraction(PlantInteractionType.Harvest);
+    }
+
+    [ContextMenu("Dig Up")]
+    public void DigUp()
+    {
+        HandlePlantInteraction(PlantInteractionType.DigUp);
+    }
+
+    private enum PlantInteractionType
+    {
+        Harvest,
+        DigUp
+    }
+
+    private void HandlePlantInteraction(PlantInteractionType interactionType)
+    {
+        if (interactionType == PlantInteractionType.Harvest)
+        {
+            HandleHarvest();
+            return;
+        }
+
+        HandleDigUp();
+    }
+
+    private void HandleHarvest()
     {
         if (!CanHarvest())
         {
-            Debug.Log("Растение еще не созрело!");
+            Debug.Log("Plant is not ready for harvest yet.");
             return;
         }
 
         var config = plantData.GrowthConfig;
-        int dropAmount = UnityEngine.Random.Range(config.HarvestDrop.MinAmount, config.HarvestDrop.MaxAmount + 1);
-        
-        string itemName = config.HarvestDrop.DropItem != null ? config.HarvestDrop.DropItem.name : "Неизвестный предмет";
-        Debug.Log($"<color=green>ПОЛУЧЕН УРОЖАЙ: {dropAmount}x {itemName}!</color>");
-        
-        if (InventoryManager.Instance != null && config.HarvestDrop.DropItem != null)
-        {
-            for (int i = 0; i < dropAmount; i++)
-            {
-                InventoryManager.Instance.AddItem(config.HarvestDrop.DropItem);
-            }
-        }
+        AddHarvestToInventory(config, "<color=green>HARVEST: {0}x {1}</color>");
 
         state.HarvestCount++;
 
-        if (config.IsRegrowable)
+        if (config.IsRegrowable && state.HarvestCount < config.MaxHarvestsPerPlant)
         {
-            if (state.HarvestCount < config.MaxHarvestsPerPlant)
-            {
-                // Откат к нулевой стадии плодов
-                state.IsInFruitStage = true;
-                state.CurrentStageIndex = 0;
-                state.TimeInCurrentStage = 0f;
-                UpdateVisual();
-            }
-            else
-            {
-                DigUp(); // Куст исчерпал ресурс
-            }
+            // Roll back to first fruit stage to regrow fruits.
+            state.IsInFruitStage = true;
+            state.CurrentStageIndex = 0;
+            state.TimeInCurrentStage = 0f;
+            UpdateVisual();
+            return;
+        }
+
+        RemovePlant();
+    }
+
+    private void HandleDigUp()
+    {
+        // Preserve your current behavior: digging mature plant still gives drops.
+        if (CanHarvest())
+        {
+            var config = plantData.GrowthConfig;
+            AddHarvestToInventory(config, "<color=orange>DUG UP WITH CROP: {0}x {1}</color>");
         }
         else
         {
-            DigUp(); // Одноразовое растение (картошка, морковка)
+            Debug.Log("Plant dug up without crop.");
+        }
+
+        RemovePlant();
+    }
+
+    private void AddHarvestToInventory(PlantGrowthConfig config, string messageFormat)
+    {
+        int dropAmount = Random.Range(config.HarvestDrop.MinAmount, config.HarvestDrop.MaxAmount + 1);
+        string itemName = config.HarvestDrop.DropItem != null ? config.HarvestDrop.DropItem.name : "Unknown item";
+
+        Debug.Log(string.Format(messageFormat, dropAmount, itemName));
+
+        if (InventoryManager.Instance == null || config.HarvestDrop.DropItem == null)
+            return;
+
+        for (int i = 0; i < dropAmount; i++)
+        {
+            InventoryManager.Instance.AddItem(config.HarvestDrop.DropItem);
         }
     }
 
-    [ContextMenu("Выкопать (Dig Up)")]
-    public void DigUp()
+    private void RemovePlant()
     {
-        // TODO: Освободить сетку от этого объекта в GridOccupancyData
-        Debug.Log("Растение выкопано и удалено!");
+        if (PlacementSystem.Instance != null)
+        {
+            PlacementSystem.Instance.RemovePlacedObject(gameObject);
+        }
+
+        Debug.Log("Plant dug up and removed.");
         Destroy(gameObject);
     }
 }
