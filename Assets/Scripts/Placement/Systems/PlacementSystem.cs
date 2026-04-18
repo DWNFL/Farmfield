@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 public class PlacementSystem : MonoBehaviour
@@ -134,6 +133,19 @@ public class PlacementSystem : MonoBehaviour
         if (!placementValidity)
         {
             Debug.Log("Cannot place object here: cells are occupied.");
+            return;
+        }
+
+        Item selectedItem = inventoryManager.GetSelectedItem();
+        if (selectedItem == null || selectedItem != lastSelectedItem)
+        {
+            HandleSelectedItem(selectedItem);
+            return;
+        }
+
+        Item consumedItem = inventoryManager.TakeSelectedItem(1);
+        if (consumedItem == null)
+        {
             return;
         }
 
