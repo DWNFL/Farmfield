@@ -9,12 +9,10 @@ public class PauseMenu : MonoBehaviour
     public GameObject pauseUI;
     private bool isPaused = false;
 
-    // ��� ������ ������ � ���������� Unity
     public KeyCode pauseKey = KeyCode.Escape;
 
     void Update()
     {
-        // ��������� ������� ������
         if (Input.GetKeyDown(pauseKey))
         {
             if (isPaused)
@@ -28,12 +26,14 @@ public class PauseMenu : MonoBehaviour
     {
         pauseUI.SetActive(false);
         isPaused = false;
-        Time.timeScale = 1f;
-        // ������ ��� ������ � Cursor
+        Time.timeScale = 1f;  // ЭТО ГЛАВНОЕ
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     public void OnGameExitPress()
     {
+        Time.timeScale = 1f;
         Application.Quit();
     }
 
@@ -42,6 +42,7 @@ public class PauseMenu : MonoBehaviour
         pauseUI.SetActive(true);
         isPaused = true;
         Time.timeScale = 0f;
-        // ������ ��� ������ � Cursor
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 }

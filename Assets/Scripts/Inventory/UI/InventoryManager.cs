@@ -52,6 +52,12 @@ public class InventoryManager : MonoBehaviour
 
     private void Update()
     {
+        // опнбепйю мю оюсгс - ме пюанрюел йнцдю бпелъ нярюмнбкемн
+        if (Time.timeScale == 0f)
+        {
+            return;
+        }
+
         if (string.IsNullOrEmpty(Input.inputString))
         {
             return;
