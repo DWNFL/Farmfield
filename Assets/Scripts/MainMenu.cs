@@ -5,6 +5,18 @@ using UnityEngine.UI;
 
 public class MainMenu : MonoBehaviour
 {
+    public GameObject menuPanel;        // Добавьте ссылку на панель меню
+    public MonoBehaviour playerController; // Добавьте ссылку на скрипт игрока
+
+    void Update()
+    {
+        // Открытие/закрытие меню по Escape
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            ToggleMenu();
+        }
+    }
+
     public void PlayGame()
     {
         Debug.Log("Кнопка PlayGame нажата!");
@@ -39,6 +51,47 @@ public class MainMenu : MonoBehaviour
 #else
         Application.Quit();
 #endif
+    }
+
+    // НОВЫЙ МЕТОД: открыть меню
+    public void OpenMenu()
+    {
+        if (menuPanel != null)
+        {
+            menuPanel.SetActive(true);
+            Time.timeScale = 0f;              // Останавливаем игру
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            // Отключаем управление игроком, если он есть
+            if (playerController != null)
+                playerController.enabled = false;
+        }
+    }
+
+    // НОВЫЙ МЕТОД: закрыть меню
+    public void CloseMenu()
+    {
+        if (menuPanel != null)
+        {
+            menuPanel.SetActive(false);
+            Time.timeScale = 1f;              // Возобновляем игру
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+
+            // Включаем управление игроком обратно
+            if (playerController != null)
+                playerController.enabled = true;
+        }
+    }
+
+    // НОВЫЙ МЕТОД: переключить меню
+    public void ToggleMenu()
+    {
+        if (menuPanel != null && menuPanel.activeSelf)
+            CloseMenu();
+        else
+            OpenMenu();
     }
 
     // Вспомогательная функция: проверяет, есть ли сцена в Build Settings
