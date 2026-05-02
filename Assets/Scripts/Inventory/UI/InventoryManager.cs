@@ -259,6 +259,110 @@ public class InventoryManager : MonoBehaviour
         }
     }
 
+    // ───────────────────────────────────────────
+    // Публичные методы для Market-системы
+    // ───────────────────────────────────────────
+
+    public int SlotCount => slots.Length;
+
+    /// <summary>
+    /// Получить стак по индексу (read-only доступ).
+    /// </summary>
+    public InventoryStack GetSlot(int index)
+    {
+        if (index < 0 || index >= slots.Length)
+            return null;
+
+        return slots[index];
+    }
+
+    /// <summary>
+    /// Подсчитать общее количество конкретного предмета во всём инвентаре.
+    /// </summary>
+    public int CountItem(Item item)
+    {
+        if (item == null)
+            return 0;
+
+        int total = 0;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (!slots[i].IsEmpty && slots[i].Item == item)
+            {
+                total += slots[i].Count;
+            }
+        }
+
+        return total;
+    }
+
+    /// <summary>
+    /// Убрать определённое количество конкретного предмета из инвентаря.
+    /// Возвращает фактически удалённое количество.
+    /// </summary>
+    public int RemoveItem(Item item, int amount)
+    {
+        if (item == null || amount <= 0)
+            return 0;
+
+        int remaining = amount;
+
+        for (int i = 0; i < slots.Length && remaining > 0; i++)
+        {
+            InventoryStack stack = slots[i];
+            if (stack.IsEmpty || stack.Item != item)
+                continue;
+
+            int toRemove = Mathf.Min(stack.Count, remaining);
+            stack.Count -= toRemove;
+            remaining -= toRemove;
+
+            if (stack.Count <= 0)
+            {
+                stack.Clear();
+            }
+        }
+
+        RefreshUI();
+        return amount - remaining;
+    }
+
+    /// <summary>
+    /// Получить список всех SellableItem в инвентаре (для UI рынка).
+    /// </summary>
+    public System.Collections.Generic.List<SellableItemInfo> GetSellableItems()
+    {
+        var result = new System.Collections.Generic.List<SellableItemInfo>();
+        var counted = new System.Collections.Generic.HashSet<int>();
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            InventoryStack stack = slots[i];
+            if (stack.IsEmpty)
+                continue;
+
+            SellableItem sellable = stack.Item as SellableItem;
+            if (sellable == null)
+                continue;
+
+            if (counted.Contains(sellable.ID))
+                continue;
+
+            counted.Add(sellable.ID);
+            int totalCount = CountItem(sellable);
+
+            result.Add(new SellableItemInfo
+            {
+                Item = sellable,
+                TotalCount = totalCount
+            });
+        }
+
+        return result;
+    }
+
+    // ───────────────────────────────────────────
+
     private void ClearSlotView(InventorySlot slot)
     {
         for (int child = slot.transform.childCount - 1; child >= 0; child--)
