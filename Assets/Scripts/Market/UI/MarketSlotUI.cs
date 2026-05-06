@@ -1,68 +1,86 @@
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class MarketSlotUI : MonoBehaviour
 {
+    public enum SlotMode
+    {
+        Buy,
+        Sell
+    }
+
     [SerializeField] private Image itemIcon;
     [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text amountText;
     [SerializeField] private TMP_Text priceText;
-    [SerializeField] private Button sellOneButton;
-    [SerializeField] private Button sellAllButton;
+    [SerializeField] private TMP_InputField quantityInput;
+    [SerializeField] private Button applyButton;
+    [SerializeField] private TMP_Text applyButtonText;
 
     private SellableItem boundItem;
     private int boundCount;
     private int boundPrice;
     private BuyerProfileSO boundBuyer;
+    private SlotMode mode;
 
-    public void Bind(SellableItem item, int count, int pricePerUnit, BuyerProfileSO buyer)
+    public void Bind(SellableItem item, int count, int pricePerUnit, BuyerProfileSO buyer, SlotMode slotMode)
     {
         boundItem = item;
         boundCount = count;
         boundPrice = pricePerUnit;
         boundBuyer = buyer;
+        mode = slotMode;
 
-        if (itemIcon != null && item.Icon != null)
+        if (itemIcon != null && item != null && item.Icon != null)
             itemIcon.sprite = item.Icon;
 
         if (itemNameText != null)
-            itemNameText.text = item.ItemName;
+            itemNameText.text = item != null ? item.ItemName : "Item";
 
         if (amountText != null)
-            amountText.text = $"x{count}";
+            amountText.text = slotMode == SlotMode.Sell ? $"x{count}" : "Buy";
 
         if (priceText != null)
-            priceText.text = $"{pricePerUnit} \u20bd/шт";
+            priceText.text = $"{pricePerUnit}";
 
-        if (sellOneButton != null)
+        if (quantityInput != null)
+            quantityInput.text = "0";
+
+        if (applyButton != null)
         {
-            sellOneButton.onClick.RemoveAllListeners();
-            sellOneButton.onClick.AddListener(OnSellOne);
-            sellOneButton.interactable = count > 0;
+            applyButton.onClick.RemoveAllListeners();
+            applyButton.onClick.AddListener(OnApply);
+            applyButton.interactable = item != null;
         }
 
-        if (sellAllButton != null)
-        {
-            sellAllButton.onClick.RemoveAllListeners();
-            sellAllButton.onClick.AddListener(OnSellAll);
-            sellAllButton.interactable = count > 0;
-        }
+        if (applyButtonText != null)
+            applyButtonText.text = slotMode == SlotMode.Buy ? "Queue Buy" : "Queue Sell";
     }
 
-    private void OnSellOne()
+    private void OnApply()
     {
-        if (MarketManager.Instance == null || boundItem == null)
+        if (boundItem == null || MarketManager.Instance == null)
             return;
 
-        MarketManager.Instance.SellItem(boundItem, 1, boundBuyer);
+        int amount = ParseInput();
+        if (mode == SlotMode.Sell)
+            amount = Mathf.Min(amount, boundCount);
+
+        if (mode == SlotMode.Buy)
+            MarketManager.Instance.SetQueuedBuy(boundItem, amount);
+        else
+            MarketManager.Instance.SetQueuedSell(boundItem, amount);
     }
 
-    private void OnSellAll()
+    private int ParseInput()
     {
-        if (MarketManager.Instance == null || boundItem == null)
-            return;
+        if (quantityInput == null)
+            return 0;
 
-        MarketManager.Instance.SellAll(boundItem, boundBuyer);
+        if (!int.TryParse(quantityInput.text, out int value))
+            return 0;
+
+        return Mathf.Max(0, value);
     }
 }

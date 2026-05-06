@@ -1,121 +1,251 @@
+﻿using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class OrderCardUI : MonoBehaviour
 {
+    [Header("Header")]
     [SerializeField] private Image buyerIcon;
     [SerializeField] private TMP_Text buyerNameText;
-    [SerializeField] private Image itemIcon;
-    [SerializeField] private TMP_Text itemNameText;
-    [SerializeField] private TMP_Text amountText;
     [SerializeField] private TMP_Text rewardText;
-    [SerializeField] private TMP_Text timerText;
-    [SerializeField] private Slider timerSlider;
-    [SerializeField] private Slider progressSlider;
-    [SerializeField] private Button actionButton;
-    [SerializeField] private TMP_Text actionButtonText;
+    [SerializeField] private TMP_Text multiplierText;
 
-    private OrderDataSO availableTemplate;
-    private ActiveOrder activeOrder;
+    [Header("Timers")]
+    [SerializeField] private TMP_Text lifeTimerText;
+    [SerializeField] private TMP_Text nextDropTimerText;
+    [SerializeField] private Slider lifeTimerSlider;
+
+    [Header("Summary")]
+    [SerializeField] private TMP_Text linesSummaryText;
+    [SerializeField] private Button expandButton;
+    [SerializeField] private GameObject linesDetailsRoot;
+
+    [Header("Line Delivery Buttons")]
+    [SerializeField] private Button[] deliverLineButtons;
+    [SerializeField] private TMP_Text[] deliverLineLabels;
+
+    [Header("Actions")]
+    [SerializeField] private Button acceptButton;
+    [SerializeField] private Button rejectButton;
+    [SerializeField] private Button deliverAllButton;
+
+    private ActiveOrder boundOrder;
     private bool isActive;
+    private bool expanded;
 
-    public void BindAvailable(OrderDataSO template)
+    public void BindAvailable(ActiveOrder order)
     {
-        availableTemplate = template;
-        activeOrder = null;
+        boundOrder = order;
         isActive = false;
+        expanded = false;
+        BindCommon();
 
-        SetInfo(template.Buyer, template.RequestedItem, template.RequestedAmount, template.RewardCoins);
-
-        if (timerText != null)
-            timerText.text = $"{template.TimeLimitSeconds / 60f:F0} мин";
-
-        if (timerSlider != null) timerSlider.gameObject.SetActive(false);
-        if (progressSlider != null) progressSlider.gameObject.SetActive(false);
-
-        if (actionButton != null)
-        {
-            actionButton.onClick.RemoveAllListeners();
-            actionButton.onClick.AddListener(OnAccept);
-        }
-
-        if (actionButtonText != null) actionButtonText.text = "Принять";
+        SetButton(acceptButton, OnAccept, true);
+        SetButton(rejectButton, OnReject, true);
+        SetButton(deliverAllButton, OnDeliverAll, false);
+        SetDetailsVisible(false);
     }
 
     public void BindActive(ActiveOrder order)
     {
-        activeOrder = order;
-        availableTemplate = null;
+        boundOrder = order;
         isActive = true;
+        expanded = false;
+        BindCommon();
 
-        var t = order.Template;
-        SetInfo(t.Buyer, t.RequestedItem, t.RequestedAmount, order.CalculateReward());
-
-        if (amountText != null)
-            amountText.text = $"{order.DeliveredAmount}/{t.RequestedAmount}";
-
-        if (progressSlider != null)
-        {
-            progressSlider.gameObject.SetActive(true);
-            progressSlider.maxValue = t.RequestedAmount;
-            progressSlider.value = order.DeliveredAmount;
-        }
-
-        if (timerSlider != null)
-        {
-            timerSlider.gameObject.SetActive(true);
-            timerSlider.maxValue = t.TimeLimitSeconds;
-        }
-
-        UpdateTimer();
-
-        if (actionButton != null)
-        {
-            actionButton.onClick.RemoveAllListeners();
-            actionButton.onClick.AddListener(OnDeliver);
-        }
-
-        if (actionButtonText != null) actionButtonText.text = "Сдать";
+        SetButton(acceptButton, OnAccept, false);
+        SetButton(rejectButton, OnReject, false);
+        SetButton(deliverAllButton, OnDeliverAll, true);
+        SetDetailsVisible(false);
     }
 
-    private void SetInfo(BuyerProfileSO buyer, SellableItem item, int amount, int reward)
+    private void BindCommon()
     {
-        if (buyerIcon != null && buyer.BuyerIcon != null) buyerIcon.sprite = buyer.BuyerIcon;
-        if (buyerNameText != null) buyerNameText.text = buyer.BuyerName;
-        if (itemIcon != null && item.Icon != null) itemIcon.sprite = item.Icon;
-        if (itemNameText != null) itemNameText.text = item.ItemName;
-        if (amountText != null) amountText.text = $"x{amount}";
-        if (rewardText != null) rewardText.text = $"{reward}";
+        if (boundOrder == null)
+            return;
+
+        if (buyerIcon != null && boundOrder.Buyer != null && boundOrder.Buyer.BuyerIcon != null)
+            buyerIcon.sprite = boundOrder.Buyer.BuyerIcon;
+
+        if (buyerNameText != null)
+            buyerNameText.text = boundOrder.Buyer != null ? boundOrder.Buyer.BuyerName : "Buyer";
+
+        if (lifeTimerSlider != null)
+        {
+            lifeTimerSlider.maxValue = isActive
+                ? Mathf.Max(1f, boundOrder.TotalExecutionLifetimeSeconds)
+                : Mathf.Max(1f, boundOrder.OfferLifetimeSeconds);
+        }
+
+        if (expandButton != null)
+        {
+            expandButton.onClick.RemoveAllListeners();
+            expandButton.onClick.AddListener(ToggleExpanded);
+            expandButton.gameObject.SetActive(boundOrder.Lines.Count > 1);
+        }
+
+        UpdateSummary();
+        UpdateTimer();
+        BindLineButtons();
+    }
+
+    private void BindLineButtons()
+    {
+        int lineCount = boundOrder != null ? boundOrder.Lines.Count : 0;
+
+        for (int i = 0; i < deliverLineButtons.Length; i++)
+        {
+            bool active = isActive && i < lineCount;
+            Button btn = deliverLineButtons[i];
+            if (btn == null)
+                continue;
+
+            btn.gameObject.SetActive(active && expanded);
+            btn.onClick.RemoveAllListeners();
+
+            int idx = i;
+            if (active)
+                btn.onClick.AddListener(() => OnDeliverLine(idx));
+
+            if (deliverLineLabels != null && i < deliverLineLabels.Length && deliverLineLabels[i] != null)
+            {
+                if (active)
+                {
+                    ActiveOrderLine line = boundOrder.Lines[i];
+                    deliverLineLabels[i].text = line.Item != null
+                        ? $"Deliver {line.Item.ItemName}"
+                        : "Deliver line";
+                }
+            }
+        }
+    }
+
+    private void UpdateSummary()
+    {
+        if (boundOrder == null || linesSummaryText == null)
+            return;
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < boundOrder.Lines.Count; i++)
+        {
+            ActiveOrderLine line = boundOrder.Lines[i];
+            if (line == null || line.Item == null)
+                continue;
+
+            if (sb.Length > 0)
+                sb.Append('\n');
+
+            if (isActive)
+                sb.Append($"{line.Item.ItemName}: {line.DeliveredAmount}/{line.RequestedAmount}");
+            else
+                sb.Append($"{line.Item.ItemName}: x{line.RequestedAmount}");
+        }
+
+        linesSummaryText.text = sb.ToString();
     }
 
     public void UpdateTimer()
     {
-        if (!isActive || activeOrder == null) return;
+        if (boundOrder == null)
+            return;
 
-        float rem = Mathf.Max(0f, activeOrder.TimeRemaining);
+        float rem = Mathf.Max(0f, boundOrder.TimeRemaining);
         int m = Mathf.FloorToInt(rem / 60f);
         int s = Mathf.FloorToInt(rem % 60f);
 
-        if (timerText != null)
+        if (lifeTimerText != null)
         {
-            timerText.text = $"{m:D2}:{s:D2}";
-            timerText.color = rem < 30f ? Color.red : Color.white;
+            lifeTimerText.text = isActive
+                ? $"Contract ends: {m:D2}:{s:D2}"
+                : $"Offer expires: {m:D2}:{s:D2}";
+            lifeTimerText.color = rem < 30f ? Color.red : Color.white;
         }
 
-        if (timerSlider != null) timerSlider.value = rem;
-        if (rewardText != null) rewardText.text = $"{activeOrder.CalculateReward()}";
+        if (nextDropTimerText != null)
+        {
+            float toDrop = boundOrder.TimeToNextMultiplierDrop;
+            if (!isActive)
+            {
+                nextDropTimerText.text = "Drop starts after accept";
+            }
+            else if (toDrop <= 0f || boundOrder.CurrentMultiplier <= 1f)
+            {
+                nextDropTimerText.text = "Next drop: 1x lock";
+            }
+            else
+            {
+                int dm = Mathf.FloorToInt(toDrop / 60f);
+                int ds = Mathf.FloorToInt(toDrop % 60f);
+                nextDropTimerText.text = $"Next drop: {dm:D2}:{ds:D2}";
+            }
+        }
+
+        if (lifeTimerSlider != null)
+            lifeTimerSlider.value = rem;
+
+        if (rewardText != null)
+            rewardText.text = $"{boundOrder.CalculateReward()}";
+
+        if (multiplierText != null)
+            multiplierText.text = $"x{boundOrder.CurrentMultiplier:F2}";
+
+        UpdateSummary();
+    }
+
+    private void ToggleExpanded()
+    {
+        expanded = !expanded;
+        SetDetailsVisible(expanded);
+    }
+
+    private void SetDetailsVisible(bool visible)
+    {
+        if (linesDetailsRoot != null)
+            linesDetailsRoot.SetActive(visible);
+
+        for (int i = 0; i < deliverLineButtons.Length; i++)
+        {
+            if (deliverLineButtons[i] != null)
+            {
+                bool canShow = isActive && boundOrder != null && i < boundOrder.Lines.Count;
+                deliverLineButtons[i].gameObject.SetActive(visible && canShow);
+            }
+        }
     }
 
     private void OnAccept()
     {
-        if (availableTemplate != null && MarketManager.Instance != null)
-            MarketManager.Instance.AcceptOrder(availableTemplate);
+        if (boundOrder != null && MarketManager.Instance != null)
+            MarketManager.Instance.AcceptOrder(boundOrder);
     }
 
-    private void OnDeliver()
+    private void OnReject()
     {
-        if (activeOrder != null && MarketManager.Instance != null)
-            MarketManager.Instance.DeliverToOrder(activeOrder);
+        if (boundOrder != null && MarketManager.Instance != null)
+            MarketManager.Instance.RejectOrder(boundOrder);
+    }
+
+    private void OnDeliverAll()
+    {
+        if (boundOrder != null && MarketManager.Instance != null)
+            MarketManager.Instance.DeliverToOrder(boundOrder);
+    }
+
+    private void OnDeliverLine(int lineIndex)
+    {
+        if (boundOrder != null && MarketManager.Instance != null)
+            MarketManager.Instance.DeliverOrderLine(boundOrder, lineIndex);
+    }
+
+    private static void SetButton(Button button, UnityEngine.Events.UnityAction action, bool active)
+    {
+        if (button == null)
+            return;
+
+        button.gameObject.SetActive(active);
+        button.onClick.RemoveAllListeners();
+        if (active)
+            button.onClick.AddListener(action);
     }
 }

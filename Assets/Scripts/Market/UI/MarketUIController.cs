@@ -1,42 +1,47 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class MarketUIController : MonoBehaviour
 {
-    [Header("Основная панель")]
+    [Header("Main")]
     [SerializeField] private GameObject marketPanel;
 
-    [Header("Вкладки")]
+    [Header("Tabs")]
     [SerializeField] private Button bazaarTabButton;
     [SerializeField] private Button ordersTabButton;
     [SerializeField] private GameObject bazaarContent;
     [SerializeField] private GameObject ordersContent;
 
-    [Header("Базар — список товаров")]
-    [SerializeField] private Transform bazaarItemListParent;
+    [Header("Bazaar Lists")]
+    [SerializeField] private Transform buyListParent;
+    [SerializeField] private Transform sellListParent;
     [SerializeField] private GameObject marketSlotPrefab;
 
-    [Header("Заказы — списки")]
+    [Header("Bazaar Totals")]
+    [SerializeField] private TMP_Text buyTotalText;
+    [SerializeField] private TMP_Text sellTotalText;
+    [SerializeField] private TMP_Text netTotalText;
+    [SerializeField] private TMP_Text dispatchTimerText;
+    [SerializeField] private Button dispatchButton;
+
+    [Header("Orders")]
     [SerializeField] private Transform availableOrdersParent;
     [SerializeField] private Transform activeOrdersParent;
     [SerializeField] private GameObject orderCardPrefab;
 
-    [Header("Информация")]
+    [Header("Info")]
     [SerializeField] private TMP_Text coinsText;
     [SerializeField] private TMP_Dropdown buyerDropdown;
 
-    [Header("Визуал вкладок")]
-    [SerializeField] private Color activeTabColor = new Color(1f, 0.85f, 0.4f);
-    [SerializeField] private Color inactiveTabColor = new Color(0.6f, 0.6f, 0.6f);
-
     private bool isOpen;
-    private int currentTab; // 0 = bazaar, 1 = orders
+    private int currentTab;
     private BuyerProfileSO selectedBuyer;
 
-    private List<MarketSlotUI> spawnedSlots = new();
-    private List<OrderCardUI> spawnedOrderCards = new();
+    private readonly List<MarketSlotUI> spawnedBuySlots = new();
+    private readonly List<MarketSlotUI> spawnedSellSlots = new();
+    private readonly List<OrderCardUI> spawnedOrderCards = new();
 
     private void Start()
     {
@@ -48,6 +53,9 @@ public class MarketUIController : MonoBehaviour
 
         if (buyerDropdown != null)
             buyerDropdown.onValueChanged.AddListener(OnBuyerSelected);
+
+        if (dispatchButton != null)
+            dispatchButton.onClick.AddListener(OnDispatch);
 
         if (marketPanel != null)
             marketPanel.SetActive(false);
@@ -70,26 +78,19 @@ public class MarketUIController : MonoBehaviour
 
     private void Update()
     {
-        // Закрытие по Escape
         if (isOpen && Input.GetKeyDown(KeyCode.Escape))
-        {
             Close();
-        }
 
-        // Обновление таймеров заказов пока открыт UI
         if (isOpen && currentTab == 1)
         {
-            foreach (var card in spawnedOrderCards)
-            {
-                if (card != null)
-                    card.UpdateTimer();
-            }
+            for (int i = 0; i < spawnedOrderCards.Count; i++)
+                if (spawnedOrderCards[i] != null)
+                    spawnedOrderCards[i].UpdateTimer();
         }
-    }
 
-    // ───────────────────────────────────────────
-    // Открытие / Закрытие
-    // ───────────────────────────────────────────
+        if (isOpen && currentTab == 0)
+            UpdateDispatchInfo();
+    }
 
     public void Open()
     {
@@ -98,7 +99,6 @@ public class MarketUIController : MonoBehaviour
 
         marketPanel.SetActive(true);
         isOpen = true;
-
         PopulateBuyerDropdown();
         SwitchTab(0);
         UpdateCoinsDisplay(PlayerWallet.Instance != null ? PlayerWallet.Instance.Coins : 0);
@@ -119,40 +119,13 @@ public class MarketUIController : MonoBehaviour
         else Open();
     }
 
-    public bool IsOpen => isOpen;
-
-    // ───────────────────────────────────────────
-    // Вкладки
-    // ───────────────────────────────────────────
-
     public void SwitchTab(int tabIndex)
     {
         currentTab = tabIndex;
-
         if (bazaarContent != null) bazaarContent.SetActive(tabIndex == 0);
         if (ordersContent != null) ordersContent.SetActive(tabIndex == 1);
-
-        // Подсветка активной вкладки
-        if (bazaarTabButton != null)
-        {
-            var colors = bazaarTabButton.colors;
-            colors.normalColor = tabIndex == 0 ? activeTabColor : inactiveTabColor;
-            bazaarTabButton.colors = colors;
-        }
-
-        if (ordersTabButton != null)
-        {
-            var colors = ordersTabButton.colors;
-            colors.normalColor = tabIndex == 1 ? activeTabColor : inactiveTabColor;
-            ordersTabButton.colors = colors;
-        }
-
         RefreshUI();
     }
-
-    // ───────────────────────────────────────────
-    // Dropdown покупателей
-    // ───────────────────────────────────────────
 
     private void PopulateBuyerDropdown()
     {
@@ -160,17 +133,13 @@ public class MarketUIController : MonoBehaviour
             return;
 
         buyerDropdown.ClearOptions();
-
         var options = new List<TMP_Dropdown.OptionData>();
         var buyers = MarketManager.Instance.AvailableBuyers;
 
         for (int i = 0; i < buyers.Count; i++)
-        {
-            options.Add(new TMP_Dropdown.OptionData(buyers[i].BuyerName, buyers[i].BuyerIcon, Color.white));
-        }
+            options.Add(new TMP_Dropdown.OptionData(buyers[i].BuyerName, buyers[i].BuyerIcon));
 
         buyerDropdown.AddOptions(options);
-
         if (buyers.Count > 0)
         {
             selectedBuyer = buyers[0];
@@ -191,10 +160,6 @@ public class MarketUIController : MonoBehaviour
         }
     }
 
-    // ───────────────────────────────────────────
-    // Обновление UI
-    // ───────────────────────────────────────────
-
     private void RefreshUI()
     {
         if (!isOpen)
@@ -208,69 +173,126 @@ public class MarketUIController : MonoBehaviour
 
     private void RefreshBazaarTab()
     {
-        ClearSpawnedSlots();
-
-        if (InventoryManager.Instance == null || marketSlotPrefab == null || bazaarItemListParent == null)
+        ClearSlotLists();
+        if (MarketManager.Instance == null || marketSlotPrefab == null)
             return;
 
-        var sellableItems = InventoryManager.Instance.GetSellableItems();
-
-        foreach (var info in sellableItems)
+        if (buyListParent != null)
         {
-            if (selectedBuyer != null && !selectedBuyer.WillBuyItem(info.Item))
-                continue;
-
-            GameObject slotObj = Instantiate(marketSlotPrefab, bazaarItemListParent);
-            MarketSlotUI slot = slotObj.GetComponent<MarketSlotUI>();
-
-            if (slot != null)
+            var buyItems = MarketManager.Instance.PurchasableItems;
+            for (int i = 0; i < buyItems.Count; i++)
             {
-                int price = MarketManager.Instance != null
-                    ? MarketManager.Instance.GetSellPrice(info.Item, selectedBuyer)
-                    : info.Item.Price;
+                SellableItem item = buyItems[i];
+                if (item == null)
+                    continue;
 
-                slot.Bind(info.Item, info.TotalCount, price, selectedBuyer);
-                spawnedSlots.Add(slot);
+                GameObject slotObj = Instantiate(marketSlotPrefab, buyListParent);
+                MarketSlotUI slot = slotObj.GetComponent<MarketSlotUI>();
+                if (slot == null)
+                    continue;
+
+                slot.Bind(item, 0, MarketManager.Instance.GetBuyPrice(item), selectedBuyer, MarketSlotUI.SlotMode.Buy);
+                spawnedBuySlots.Add(slot);
             }
         }
+
+        if (sellListParent != null && InventoryManager.Instance != null)
+        {
+            var sellableItems = InventoryManager.Instance.GetSellableItems();
+            for (int i = 0; i < sellableItems.Count; i++)
+            {
+                var info = sellableItems[i];
+                if (selectedBuyer != null && !selectedBuyer.WillBuyItem(info.Item))
+                    continue;
+
+                GameObject slotObj = Instantiate(marketSlotPrefab, sellListParent);
+                MarketSlotUI slot = slotObj.GetComponent<MarketSlotUI>();
+                if (slot == null)
+                    continue;
+
+                int price = MarketManager.Instance.GetSellPrice(info.Item, selectedBuyer);
+                slot.Bind(info.Item, info.TotalCount, price, selectedBuyer, MarketSlotUI.SlotMode.Sell);
+                spawnedSellSlots.Add(slot);
+            }
+        }
+
+        UpdateDispatchInfo();
+    }
+
+    private void UpdateDispatchInfo()
+    {
+        if (MarketManager.Instance == null)
+            return;
+
+        int buy = MarketManager.Instance.GetQueuedBuyTotal();
+        int sell = MarketManager.Instance.GetQueuedSellTotal(selectedBuyer);
+        int net = sell - buy;
+
+        if (buyTotalText != null) buyTotalText.text = $"-{buy}";
+        if (sellTotalText != null) sellTotalText.text = $"+{sell}";
+        if (netTotalText != null)
+        {
+            string sign = net >= 0 ? "+" : "";
+            netTotalText.text = $"{sign}{net}";
+        }
+
+        if (dispatchTimerText != null)
+        {
+            if (MarketManager.Instance.DispatchInProgress)
+            {
+                int sec = Mathf.CeilToInt(MarketManager.Instance.DispatchTimeRemaining);
+                dispatchTimerText.text = $"Truck: {sec}s";
+            }
+            else
+            {
+                dispatchTimerText.text = "Truck ready";
+            }
+        }
+
+        if (dispatchButton != null)
+            dispatchButton.interactable = !MarketManager.Instance.DispatchInProgress;
+    }
+
+    private void OnDispatch()
+    {
+        if (MarketManager.Instance == null)
+            return;
+
+        MarketManager.Instance.DispatchQueuedTrade(selectedBuyer);
     }
 
     private void RefreshOrdersTab()
     {
-        ClearSpawnedOrderCards();
+        ClearOrderCards();
 
         if (MarketManager.Instance == null || orderCardPrefab == null)
             return;
 
-        // Доступные заказы
         if (availableOrdersParent != null)
         {
-            foreach (var template in MarketManager.Instance.AvailableOrders)
+            foreach (var order in MarketManager.Instance.AvailableOrders)
             {
                 GameObject cardObj = Instantiate(orderCardPrefab, availableOrdersParent);
                 OrderCardUI card = cardObj.GetComponent<OrderCardUI>();
+                if (card == null)
+                    continue;
 
-                if (card != null)
-                {
-                    card.BindAvailable(template);
-                    spawnedOrderCards.Add(card);
-                }
+                card.BindAvailable(order);
+                spawnedOrderCards.Add(card);
             }
         }
 
-        // Активные заказы
         if (activeOrdersParent != null)
         {
             foreach (var order in MarketManager.Instance.ActiveOrders)
             {
                 GameObject cardObj = Instantiate(orderCardPrefab, activeOrdersParent);
                 OrderCardUI card = cardObj.GetComponent<OrderCardUI>();
+                if (card == null)
+                    continue;
 
-                if (card != null)
-                {
-                    card.BindActive(order);
-                    spawnedOrderCards.Add(card);
-                }
+                card.BindActive(order);
+                spawnedOrderCards.Add(card);
             }
         }
     }
@@ -281,24 +303,25 @@ public class MarketUIController : MonoBehaviour
             coinsText.text = $"{coins}";
     }
 
-    private void ClearSpawnedSlots()
+    private void ClearSlotLists()
     {
-        foreach (var slot in spawnedSlots)
-        {
-            if (slot != null)
-                Destroy(slot.gameObject);
-        }
+        for (int i = 0; i < spawnedBuySlots.Count; i++)
+            if (spawnedBuySlots[i] != null)
+                Destroy(spawnedBuySlots[i].gameObject);
 
-        spawnedSlots.Clear();
+        for (int i = 0; i < spawnedSellSlots.Count; i++)
+            if (spawnedSellSlots[i] != null)
+                Destroy(spawnedSellSlots[i].gameObject);
+
+        spawnedBuySlots.Clear();
+        spawnedSellSlots.Clear();
     }
 
-    private void ClearSpawnedOrderCards()
+    private void ClearOrderCards()
     {
-        foreach (var card in spawnedOrderCards)
-        {
-            if (card != null)
-                Destroy(card.gameObject);
-        }
+        for (int i = 0; i < spawnedOrderCards.Count; i++)
+            if (spawnedOrderCards[i] != null)
+                Destroy(spawnedOrderCards[i].gameObject);
 
         spawnedOrderCards.Clear();
     }
