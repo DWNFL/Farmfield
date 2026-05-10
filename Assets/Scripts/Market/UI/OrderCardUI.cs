@@ -1,4 +1,5 @@
-﻿using System.Text;
+using System.Collections.Generic;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,8 +21,10 @@ public class OrderCardUI : MonoBehaviour
     [SerializeField] private TMP_Text linesSummaryText;
     [SerializeField] private Button expandButton;
     [SerializeField] private GameObject linesDetailsRoot;
+    [SerializeField] private Transform linesDetailsParent;
+    [SerializeField] private GameObject orderLinePrefab;
 
-    [Header("Line Delivery Buttons")]
+    [Header("Line Buttons")]
     [SerializeField] private Button[] deliverLineButtons;
     [SerializeField] private TMP_Text[] deliverLineLabels;
 
@@ -30,20 +33,29 @@ public class OrderCardUI : MonoBehaviour
     [SerializeField] private Button rejectButton;
     [SerializeField] private Button deliverAllButton;
 
+    [Header("State Visuals")]
+    [SerializeField] private GameObject availableStateRoot;
+    [SerializeField] private GameObject activeStateRoot;
+    [SerializeField] private Image cardBackground;
+    [SerializeField] private Color availableBackgroundColor = Color.white;
+    [SerializeField] private Color activeBackgroundColor = new Color(0.94f, 0.98f, 1f, 1f);
+
     private ActiveOrder boundOrder;
     private bool isActive;
     private bool expanded;
+    private readonly List<OrderLineUI> spawnedLineViews = new();
 
     public void BindAvailable(ActiveOrder order)
     {
         boundOrder = order;
         isActive = false;
         expanded = false;
-        BindCommon();
 
+        BindCommon();
         SetButton(acceptButton, OnAccept, true);
         SetButton(rejectButton, OnReject, true);
         SetButton(deliverAllButton, OnDeliverAll, false);
+        ApplyStateVisuals();
         SetDetailsVisible(false);
     }
 
@@ -52,11 +64,12 @@ public class OrderCardUI : MonoBehaviour
         boundOrder = order;
         isActive = true;
         expanded = false;
-        BindCommon();
 
+        BindCommon();
         SetButton(acceptButton, OnAccept, false);
         SetButton(rejectButton, OnReject, false);
         SetButton(deliverAllButton, OnDeliverAll, true);
+        ApplyStateVisuals();
         SetDetailsVisible(false);
     }
 
@@ -85,64 +98,40 @@ public class OrderCardUI : MonoBehaviour
             expandButton.gameObject.SetActive(boundOrder.Lines.Count > 1);
         }
 
+        RebuildLineViews();
+        BindLineButtons();
         UpdateSummary();
         UpdateTimer();
-        BindLineButtons();
     }
 
     private void BindLineButtons()
     {
-        int lineCount = boundOrder != null ? boundOrder.Lines.Count : 0;
+        int count = boundOrder != null ? boundOrder.Lines.Count : 0;
+        if (deliverLineButtons == null)
+            return;
 
         for (int i = 0; i < deliverLineButtons.Length; i++)
         {
-            bool active = isActive && i < lineCount;
+            bool active = isActive && i < count;
             Button btn = deliverLineButtons[i];
             if (btn == null)
                 continue;
 
-            btn.gameObject.SetActive(active && expanded);
             btn.onClick.RemoveAllListeners();
+            btn.gameObject.SetActive(active && expanded);
 
             int idx = i;
             if (active)
                 btn.onClick.AddListener(() => OnDeliverLine(idx));
 
-            if (deliverLineLabels != null && i < deliverLineLabels.Length && deliverLineLabels[i] != null)
+            if (deliverLineLabels != null && i < deliverLineLabels.Length && deliverLineLabels[i] != null && active)
             {
-                if (active)
-                {
-                    ActiveOrderLine line = boundOrder.Lines[i];
-                    deliverLineLabels[i].text = line.Item != null
-                        ? $"Deliver {line.Item.ItemName}"
-                        : "Deliver line";
-                }
+                ActiveOrderLine line = boundOrder.Lines[i];
+                deliverLineLabels[i].text = line.Item != null
+                    ? $"Load {line.Item.ItemName}"
+                    : "Load line";
             }
         }
-    }
-
-    private void UpdateSummary()
-    {
-        if (boundOrder == null || linesSummaryText == null)
-            return;
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < boundOrder.Lines.Count; i++)
-        {
-            ActiveOrderLine line = boundOrder.Lines[i];
-            if (line == null || line.Item == null)
-                continue;
-
-            if (sb.Length > 0)
-                sb.Append('\n');
-
-            if (isActive)
-                sb.Append($"{line.Item.ItemName}: {line.DeliveredAmount}/{line.RequestedAmount}");
-            else
-                sb.Append($"{line.Item.ItemName}: x{line.RequestedAmount}");
-        }
-
-        linesSummaryText.text = sb.ToString();
     }
 
     public void UpdateTimer()
@@ -166,13 +155,9 @@ public class OrderCardUI : MonoBehaviour
         {
             float toDrop = boundOrder.TimeToNextMultiplierDrop;
             if (!isActive)
-            {
                 nextDropTimerText.text = "Drop starts after accept";
-            }
             else if (toDrop <= 0f || boundOrder.CurrentMultiplier <= 1f)
-            {
                 nextDropTimerText.text = "Next drop: 1x lock";
-            }
             else
             {
                 int dm = Mathf.FloorToInt(toDrop / 60f);
@@ -193,6 +178,34 @@ public class OrderCardUI : MonoBehaviour
         UpdateSummary();
     }
 
+    private void UpdateSummary()
+    {
+        if (boundOrder == null)
+            return;
+
+        if (linesSummaryText != null)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < boundOrder.Lines.Count; i++)
+            {
+                ActiveOrderLine line = boundOrder.Lines[i];
+                if (line == null || line.Item == null)
+                    continue;
+
+                if (sb.Length > 0)
+                    sb.Append('\n');
+
+                sb.Append(isActive
+                    ? $"{line.Item.ItemName}: {line.DeliveredAmount}/{line.RequestedAmount}"
+                    : $"{line.Item.ItemName}: x{line.RequestedAmount}");
+            }
+
+            linesSummaryText.text = sb.ToString();
+        }
+
+        RefreshLineViews();
+    }
+
     private void ToggleExpanded()
     {
         expanded = !expanded;
@@ -204,13 +217,16 @@ public class OrderCardUI : MonoBehaviour
         if (linesDetailsRoot != null)
             linesDetailsRoot.SetActive(visible);
 
+        if (deliverLineButtons == null)
+            return;
+
         for (int i = 0; i < deliverLineButtons.Length; i++)
         {
-            if (deliverLineButtons[i] != null)
-            {
-                bool canShow = isActive && boundOrder != null && i < boundOrder.Lines.Count;
-                deliverLineButtons[i].gameObject.SetActive(visible && canShow);
-            }
+            if (deliverLineButtons[i] == null)
+                continue;
+
+            bool canShow = isActive && boundOrder != null && i < boundOrder.Lines.Count;
+            deliverLineButtons[i].gameObject.SetActive(visible && canShow);
         }
     }
 
@@ -236,6 +252,66 @@ public class OrderCardUI : MonoBehaviour
     {
         if (boundOrder != null && MarketManager.Instance != null)
             MarketManager.Instance.DeliverOrderLine(boundOrder, lineIndex);
+    }
+
+    private void RebuildLineViews()
+    {
+        ClearLineViews();
+
+        if (boundOrder == null || orderLinePrefab == null)
+            return;
+
+        Transform parent = linesDetailsParent != null
+            ? linesDetailsParent
+            : linesDetailsRoot != null ? linesDetailsRoot.transform : transform;
+
+        for (int i = 0; i < boundOrder.Lines.Count; i++)
+        {
+            GameObject lineObj = Instantiate(orderLinePrefab, parent);
+            OrderLineUI lineView = lineObj.GetComponent<OrderLineUI>();
+            if (lineView == null)
+                continue;
+
+            int idx = i;
+            lineView.Bind(boundOrder.Lines[i], isActive, () => OnDeliverLine(idx));
+            spawnedLineViews.Add(lineView);
+        }
+    }
+
+    private void RefreshLineViews()
+    {
+        if (boundOrder == null)
+            return;
+
+        for (int i = 0; i < spawnedLineViews.Count; i++)
+        {
+            if (spawnedLineViews[i] == null || i >= boundOrder.Lines.Count)
+                continue;
+
+            int idx = i;
+            spawnedLineViews[i].Bind(boundOrder.Lines[i], isActive, () => OnDeliverLine(idx));
+        }
+    }
+
+    private void ClearLineViews()
+    {
+        for (int i = 0; i < spawnedLineViews.Count; i++)
+            if (spawnedLineViews[i] != null)
+                Destroy(spawnedLineViews[i].gameObject);
+
+        spawnedLineViews.Clear();
+    }
+
+    private void ApplyStateVisuals()
+    {
+        if (availableStateRoot != null)
+            availableStateRoot.SetActive(!isActive);
+
+        if (activeStateRoot != null)
+            activeStateRoot.SetActive(isActive);
+
+        if (cardBackground != null)
+            cardBackground.color = isActive ? activeBackgroundColor : availableBackgroundColor;
     }
 
     private static void SetButton(Button button, UnityEngine.Events.UnityAction action, bool active)

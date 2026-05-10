@@ -4,28 +4,33 @@ using UnityEngine;
 
 public class MarketManager : MonoBehaviour
 {
-    [Header("Buyers")]
-    [Tooltip("First buyer is used as bazaar buyer for direct sales")]
+    [Header("Bazaar")]
+    [SerializeField] private BazaarProfileSO bazaarBuyer;
+
+    [Header("Contract Buyers")]
     [SerializeField] private BuyerProfileSO[] availableBuyers;
 
     [Header("Order Templates")]
     [SerializeField] private OrderDataSO[] orderPool;
 
-    [Header("Orders Limits")]
+    [Header("Order Limits")]
     [SerializeField] private int maxActiveOrders = 3;
     [SerializeField] private int maxAvailableOrders = 6;
 
-    [Header("Bazaar Truck Cooldown")]
+    [Header("Bazaar Dispatch")]
     [SerializeField] private float bazaarSellIntervalSeconds = 90f;
 
     [Header("Buy Catalog")]
+    [SerializeField] private ItemDatabaseSO itemDatabase;
+    [SerializeField] private bool useItemDatabaseForPurchases = true;
+    [SerializeField] private bool includeManualPurchasableItems;
     [SerializeField] private SellableItem[] purchasableItems;
     [SerializeField] private float buyPriceMultiplier = 1f;
 
     private readonly List<ActiveOrder> activeOrders = new();
     private readonly List<ActiveOrder> availableOrders = new();
+    private readonly List<SellableItem> resolvedPurchasableItems = new();
     private readonly Dictionary<BuyerProfileSO, float> buyerOrderTimers = new();
-
     private readonly Dictionary<SellableItem, int> queuedBuy = new();
     private readonly Dictionary<SellableItem, int> queuedSell = new();
 
@@ -37,10 +42,12 @@ public class MarketManager : MonoBehaviour
 
     public static MarketManager Instance { get; private set; }
 
+    public BazaarProfileSO BazaarBuyer => GetBazaarBuyer();
     public IReadOnlyList<BuyerProfileSO> AvailableBuyers => availableBuyers;
     public IReadOnlyList<ActiveOrder> ActiveOrders => activeOrders;
     public IReadOnlyList<ActiveOrder> AvailableOrders => availableOrders;
-    public IReadOnlyList<SellableItem> PurchasableItems => purchasableItems;
+    public IReadOnlyList<SellableItem> PurchasableItems => GetPurchasableItems();
+
     public float BazaarCooldownRemaining => Mathf.Max(0f, nextBazaarSellTime - Time.time);
     public bool DispatchInProgress => dispatchInProgress;
     public float DispatchTimeRemaining => dispatchInProgress ? Mathf.Max(0f, dispatchTimeRemaining) : 0f;
@@ -73,12 +80,12 @@ public class MarketManager : MonoBehaviour
         UpdateDispatch();
     }
 
-    public int GetSellPrice(SellableItem item, BuyerProfileSO buyer = null)
+    public int GetSellPrice(SellableItem item, BazaarProfileSO buyer = null)
     {
         if (item == null)
             return 0;
 
-        BuyerProfileSO targetBuyer = buyer ?? GetDefaultBuyer();
+        BazaarProfileSO targetBuyer = buyer ?? GetDefaultBuyer();
         return targetBuyer == null ? item.Price : targetBuyer.GetPrice(item);
     }
 
@@ -90,6 +97,49 @@ public class MarketManager : MonoBehaviour
         return Mathf.Max(1, Mathf.RoundToInt(item.Price * Mathf.Max(0.1f, buyPriceMultiplier)));
     }
 
+    private IReadOnlyList<SellableItem> GetPurchasableItems()
+    {
+        RefreshPurchaseCatalog();
+        return resolvedPurchasableItems;
+    }
+
+    private void RefreshPurchaseCatalog()
+    {
+        resolvedPurchasableItems.Clear();
+
+        bool loadedFromDatabase = false;
+        if (useItemDatabaseForPurchases && itemDatabase != null && itemDatabase.Items != null)
+        {
+            for (int i = 0; i < itemDatabase.Items.Count; i++)
+            {
+                if (itemDatabase.Items[i] is SeedItem seed)
+                    AddPurchasableItem(seed);
+            }
+
+            loadedFromDatabase = resolvedPurchasableItems.Count > 0;
+        }
+
+        if (!useItemDatabaseForPurchases || includeManualPurchasableItems || !loadedFromDatabase)
+            AddManualPurchasableItems();
+    }
+
+    private void AddManualPurchasableItems()
+    {
+        if (purchasableItems == null)
+            return;
+
+        for (int i = 0; i < purchasableItems.Length; i++)
+            AddPurchasableItem(purchasableItems[i]);
+    }
+
+    private void AddPurchasableItem(SellableItem item)
+    {
+        if (item == null || resolvedPurchasableItems.Contains(item))
+            return;
+
+        resolvedPurchasableItems.Add(item);
+    }
+
     public void SetQueuedBuy(SellableItem item, int amount)
     {
         if (item == null)
@@ -97,8 +147,6 @@ public class MarketManager : MonoBehaviour
 
         if (amount <= 0) queuedBuy.Remove(item);
         else queuedBuy[item] = amount;
-
-        OnMarketDataChanged?.Invoke();
     }
 
     public void SetQueuedSell(SellableItem item, int amount)
@@ -112,12 +160,23 @@ public class MarketManager : MonoBehaviour
 
         if (capped <= 0) queuedSell.Remove(item);
         else queuedSell[item] = capped;
-
-        OnMarketDataChanged?.Invoke();
     }
 
-    public int GetQueuedBuyAmount(SellableItem item) => item != null && queuedBuy.TryGetValue(item, out int a) ? a : 0;
-    public int GetQueuedSellAmount(SellableItem item) => item != null && queuedSell.TryGetValue(item, out int a) ? a : 0;
+    public int GetQueuedBuyAmount(SellableItem item)
+    {
+        if (item == null)
+            return 0;
+
+        return queuedBuy.TryGetValue(item, out int amount) ? Mathf.Max(0, amount) : 0;
+    }
+
+    public int GetQueuedSellAmount(SellableItem item)
+    {
+        if (item == null)
+            return 0;
+
+        return queuedSell.TryGetValue(item, out int amount) ? Mathf.Max(0, amount) : 0;
+    }
 
     public int GetQueuedBuyTotal()
     {
@@ -127,7 +186,7 @@ public class MarketManager : MonoBehaviour
         return total;
     }
 
-    public int GetQueuedSellTotal(BuyerProfileSO buyer = null)
+    public int GetQueuedSellTotal(BazaarProfileSO buyer = null)
     {
         int total = 0;
         foreach (var kv in queuedSell)
@@ -135,16 +194,14 @@ public class MarketManager : MonoBehaviour
         return total;
     }
 
-    public int GetQueuedNet(BuyerProfileSO buyer = null) => GetQueuedSellTotal(buyer) - GetQueuedBuyTotal();
+    public int GetQueuedNet(BazaarProfileSO buyer = null) => GetQueuedSellTotal(buyer) - GetQueuedBuyTotal();
 
-    public void ClearQueue()
+    public bool HasQueuedTrade()
     {
-        queuedBuy.Clear();
-        queuedSell.Clear();
-        OnMarketDataChanged?.Invoke();
+        return queuedBuy.Count > 0 || queuedSell.Count > 0;
     }
 
-    public bool DispatchQueuedTrade(BuyerProfileSO buyer)
+    public bool DispatchQueuedTrade(BazaarProfileSO buyer)
     {
         if (dispatchInProgress || !CanDirectSell(buyer, out _))
             return false;
@@ -153,7 +210,7 @@ public class MarketManager : MonoBehaviour
             return false;
 
         int buyTotal = GetQueuedBuyTotal();
-        int sellRevenue = 0;
+        var sellReservations = new List<(SellableItem item, int amount, int price)>();
 
         foreach (var kv in queuedSell)
         {
@@ -162,15 +219,24 @@ public class MarketManager : MonoBehaviour
             if (amount <= 0)
                 continue;
 
-            int removed = InventoryManager.Instance.RemoveItem(kv.Key, amount);
-            if (removed > 0)
-                sellRevenue += GetSellPrice(kv.Key, buyer) * removed;
+            sellReservations.Add((kv.Key, amount, GetSellPrice(kv.Key, buyer)));
         }
+
+        if (buyTotal <= 0 && sellReservations.Count == 0)
+            return false;
 
         if (buyTotal > 0 && !PlayerWallet.Instance.SpendCoins(buyTotal))
             return false;
 
-        reservedSellRevenue = sellRevenue;
+        reservedSellRevenue = 0;
+        for (int i = 0; i < sellReservations.Count; i++)
+        {
+            var sale = sellReservations[i];
+            int removed = InventoryManager.Instance.RemoveItem(sale.item, sale.amount);
+            if (removed > 0)
+                reservedSellRevenue += sale.price * removed;
+        }
+
         reservedPurchases.Clear();
         foreach (var kv in queuedBuy)
         {
@@ -188,10 +254,10 @@ public class MarketManager : MonoBehaviour
         return true;
     }
 
-    public bool CanDirectSell(BuyerProfileSO buyer, out float remainingSeconds)
+    public bool CanDirectSell(BazaarProfileSO buyer, out float remainingSeconds)
     {
         remainingSeconds = 0f;
-        BuyerProfileSO targetBuyer = buyer ?? GetDefaultBuyer();
+        BazaarProfileSO targetBuyer = buyer ?? GetDefaultBuyer();
         if (!IsBazaarBuyer(targetBuyer))
             return true;
 
@@ -203,44 +269,6 @@ public class MarketManager : MonoBehaviour
 
         remainingSeconds = BazaarCooldownRemaining;
         return remainingSeconds <= 0f;
-    }
-
-    public int SellItem(SellableItem item, int amount, BuyerProfileSO buyer = null)
-    {
-        if (item == null || amount <= 0 || InventoryManager.Instance == null || PlayerWallet.Instance == null)
-            return 0;
-
-        BuyerProfileSO targetBuyer = buyer ?? GetDefaultBuyer();
-        if (targetBuyer != null && !targetBuyer.WillBuyItem(item))
-            return 0;
-
-        if (!CanDirectSell(targetBuyer, out _))
-            return 0;
-
-        int available = InventoryManager.Instance.CountItem(item);
-        int toSell = Mathf.Min(amount, available);
-        if (toSell <= 0)
-            return 0;
-
-        int pricePerUnit = GetSellPrice(item, targetBuyer);
-        int removed = InventoryManager.Instance.RemoveItem(item, toSell);
-        if (removed <= 0)
-            return 0;
-
-        PlayerWallet.Instance.AddCoins(pricePerUnit * removed);
-
-        if (IsBazaarBuyer(targetBuyer))
-            nextBazaarSellTime = Time.time + Mathf.Max(0f, bazaarSellIntervalSeconds);
-
-        OnMarketDataChanged?.Invoke();
-        return pricePerUnit * removed;
-    }
-
-    public int SellAll(SellableItem item, BuyerProfileSO buyer = null)
-    {
-        return item == null || InventoryManager.Instance == null
-            ? 0
-            : SellItem(item, InventoryManager.Instance.CountItem(item), buyer);
     }
 
     public bool AcceptOrder(ActiveOrder order)
@@ -426,6 +454,9 @@ public class MarketManager : MonoBehaviour
             if (buyer == null)
                 continue;
 
+            if (buyer == GetBazaarBuyer())
+                continue;
+
             TryGenerateOrderForBuyer(buyer, force);
         }
     }
@@ -446,7 +477,7 @@ public class MarketManager : MonoBehaviour
         if (template == null || !template.HasValidLines())
             return;
 
-        List<ActiveOrderLine> lines = template.CreateRuntimeLines(buyer);
+        List<ActiveOrderLine> lines = template.CreateRuntimeLines();
         if (lines.Count == 0)
             return;
 
@@ -462,6 +493,10 @@ public class MarketManager : MonoBehaviour
             ? Mathf.Max(1f, template.OverrideOneXHoldSeconds)
             : Mathf.Max(1f, buyer.OneXHoldSeconds);
 
+        float stepSeconds = template.OverrideLifetime
+            ? Mathf.Max(1f, template.OverrideMultiplierStepSeconds)
+            : Mathf.Max(1f, buyer.MultiplierStepSeconds);
+
         int baseReward = ResolveBaseReward(template, lines);
 
         var runtimeOrder = new ActiveOrder(
@@ -471,7 +506,7 @@ public class MarketManager : MonoBehaviour
             startMultiplier,
             decaySeconds,
             holdSeconds,
-            Mathf.Max(1f, buyer.MultiplierStepSeconds),
+            stepSeconds,
             Mathf.Max(1f, buyer.OfferLifetimeSeconds));
 
         availableOrders.Add(runtimeOrder);
@@ -503,92 +538,19 @@ public class MarketManager : MonoBehaviour
             if (template.Buyer != null && template.Buyer != buyer)
                 continue;
 
-            if (!buyer.UseAnyCompatibleTemplate && template.Buyer == null)
-                continue;
-
-            if (!TemplateHasAnyBuyerCompatibleItem(template, buyer))
-                continue;
-
             candidates.Add(template);
         }
 
         if (candidates.Count == 0)
             return null;
 
-        if (!buyer.PreferFreshProducts)
-            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
-
-        float totalWeight = 0f;
-        float[] weights = new float[candidates.Count];
-
-        for (int i = 0; i < candidates.Count; i++)
-        {
-            float weight = CalculateFreshWeight(candidates[i], buyer);
-            weights[i] = weight;
-            totalWeight += weight;
-        }
-
-        float pick = UnityEngine.Random.Range(0f, totalWeight);
-        float accum = 0f;
-        for (int i = 0; i < candidates.Count; i++)
-        {
-            accum += weights[i];
-            if (pick <= accum)
-                return candidates[i];
-        }
-
-        return candidates[^1];
-    }
-
-    private static bool TemplateHasAnyBuyerCompatibleItem(OrderDataSO template, BuyerProfileSO buyer)
-    {
-        if (template.RequestedLines != null)
-        {
-            for (int i = 0; i < template.RequestedLines.Length; i++)
-            {
-                OrderRequestLine line = template.RequestedLines[i];
-                if (line == null || line.Item == null)
-                    continue;
-
-                if (buyer.WillBuyItem(line.Item))
-                    return true;
-            }
-        }
-
-        return template.RequestedItem != null && buyer.WillBuyItem(template.RequestedItem);
-    }
-
-    private static float CalculateFreshWeight(OrderDataSO template, BuyerProfileSO buyer)
-    {
-        if (template.RequestedLines == null || template.RequestedLines.Length == 0)
-            return template.RequestedItem is ProduceItem ? Mathf.Max(1f, buyer.FreshPreferenceWeight) : 1f;
-
-        int fresh = 0;
-        int total = 0;
-
-        for (int i = 0; i < template.RequestedLines.Length; i++)
-        {
-            OrderRequestLine line = template.RequestedLines[i];
-            if (line == null || line.Item == null)
-                continue;
-
-            total++;
-            if (line.Item is ProduceItem)
-                fresh++;
-        }
-
-        if (total == 0)
-            return 1f;
-
-        float ratio = fresh / (float)total;
-        return Mathf.Lerp(1f, Mathf.Max(1f, buyer.FreshPreferenceWeight), ratio);
+        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
     private static int ResolveBaseReward(OrderDataSO template, List<ActiveOrderLine> lines)
     {
         int configured = Mathf.Max(1, template.RewardCoins);
         int itemBased = 0;
-
         for (int i = 0; i < lines.Count; i++)
         {
             ActiveOrderLine line = lines[i];
@@ -601,16 +563,21 @@ public class MarketManager : MonoBehaviour
         return Mathf.Max(configured, itemBased);
     }
 
-    private bool IsBazaarBuyer(BuyerProfileSO buyer)
+    private bool IsBazaarBuyer(BazaarProfileSO buyer)
     {
-        BuyerProfileSO bazaar = GetDefaultBuyer();
+        BazaarProfileSO bazaar = GetDefaultBuyer();
         return buyer != null && buyer == bazaar;
     }
 
-    public BuyerProfileSO GetDefaultBuyer()
+    public BazaarProfileSO GetDefaultBuyer()
     {
-        if (availableBuyers != null && availableBuyers.Length > 0)
-            return availableBuyers[0];
+        return GetBazaarBuyer();
+    }
+
+    private BazaarProfileSO GetBazaarBuyer()
+    {
+        if (bazaarBuyer != null)
+            return bazaarBuyer;
 
         return null;
     }

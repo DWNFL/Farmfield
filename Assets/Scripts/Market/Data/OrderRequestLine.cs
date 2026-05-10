@@ -5,13 +5,10 @@ using UnityEngine;
 public class OrderRequestLine
 {
     public SellableItem Item;
-    [Min(1)] public int MinAmount = 10;
-    [Min(1)] public int MaxAmount = 30;
+    [Min(1)] public int Amount = 10;
 
-    public int RollAmount()
+    public int GetAmount()
     {
-        int min = Mathf.Max(1, MinAmount);
-        int max = Mathf.Max(min, MaxAmount);
-        return UnityEngine.Random.Range(min, max + 1);
+        return Mathf.Max(1, Amount);
     }
 }

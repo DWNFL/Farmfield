@@ -36,8 +36,7 @@ public class MarketUIController : MonoBehaviour
     [SerializeField] private TMP_Dropdown buyerDropdown;
 
     private bool isOpen;
-    private int currentTab;
-    private BuyerProfileSO selectedBuyer;
+    private BazaarProfileSO selectedBuyer;
 
     private readonly List<MarketSlotUI> spawnedBuySlots = new();
     private readonly List<MarketSlotUI> spawnedSellSlots = new();
@@ -52,7 +51,7 @@ public class MarketUIController : MonoBehaviour
             ordersTabButton.onClick.AddListener(() => SwitchTab(1));
 
         if (buyerDropdown != null)
-            buyerDropdown.onValueChanged.AddListener(OnBuyerSelected);
+            buyerDropdown.interactable = false;
 
         if (dispatchButton != null)
             dispatchButton.onClick.AddListener(OnDispatch);
@@ -81,14 +80,14 @@ public class MarketUIController : MonoBehaviour
         if (isOpen && Input.GetKeyDown(KeyCode.Escape))
             Close();
 
-        if (isOpen && currentTab == 1)
+        if (isOpen)
         {
             for (int i = 0; i < spawnedOrderCards.Count; i++)
                 if (spawnedOrderCards[i] != null)
                     spawnedOrderCards[i].UpdateTimer();
         }
 
-        if (isOpen && currentTab == 0)
+        if (isOpen)
             UpdateDispatchInfo();
     }
 
@@ -100,7 +99,8 @@ public class MarketUIController : MonoBehaviour
         marketPanel.SetActive(true);
         isOpen = true;
         PopulateBuyerDropdown();
-        SwitchTab(0);
+        ShowAllSections();
+        RefreshUI();
         UpdateCoinsDisplay(PlayerWallet.Instance != null ? PlayerWallet.Instance.Coins : 0);
     }
 
@@ -121,10 +121,14 @@ public class MarketUIController : MonoBehaviour
 
     public void SwitchTab(int tabIndex)
     {
-        currentTab = tabIndex;
-        if (bazaarContent != null) bazaarContent.SetActive(tabIndex == 0);
-        if (ordersContent != null) ordersContent.SetActive(tabIndex == 1);
-        RefreshUI();
+        _ = tabIndex;
+        ShowAllSections();
+    }
+
+    private void ShowAllSections()
+    {
+        if (bazaarContent != null) bazaarContent.SetActive(true);
+        if (ordersContent != null) ordersContent.SetActive(true);
     }
 
     private void PopulateBuyerDropdown()
@@ -134,30 +138,23 @@ public class MarketUIController : MonoBehaviour
 
         buyerDropdown.ClearOptions();
         var options = new List<TMP_Dropdown.OptionData>();
-        var buyers = MarketManager.Instance.AvailableBuyers;
-
-        for (int i = 0; i < buyers.Count; i++)
-            options.Add(new TMP_Dropdown.OptionData(buyers[i].BuyerName, buyers[i].BuyerIcon));
+        BazaarProfileSO bazaar = MarketManager.Instance.BazaarBuyer;
+        if (bazaar != null)
+            options.Add(new TMP_Dropdown.OptionData(bazaar.BuyerName, bazaar.BuyerIcon, Color.white));
 
         buyerDropdown.AddOptions(options);
-        if (buyers.Count > 0)
+        if (bazaar != null)
         {
-            selectedBuyer = buyers[0];
+            selectedBuyer = bazaar;
             buyerDropdown.value = 0;
         }
     }
 
     private void OnBuyerSelected(int index)
     {
-        if (MarketManager.Instance == null)
-            return;
-
-        var buyers = MarketManager.Instance.AvailableBuyers;
-        if (index >= 0 && index < buyers.Count)
-        {
-            selectedBuyer = buyers[index];
-            RefreshBazaarTab();
-        }
+        _ = index;
+        selectedBuyer = MarketManager.Instance != null ? MarketManager.Instance.BazaarBuyer : null;
+        RefreshBazaarTab();
     }
 
     private void RefreshUI()
@@ -165,10 +162,9 @@ public class MarketUIController : MonoBehaviour
         if (!isOpen)
             return;
 
-        if (currentTab == 0)
-            RefreshBazaarTab();
-        else
-            RefreshOrdersTab();
+        ShowAllSections();
+        RefreshBazaarTab();
+        RefreshOrdersTab();
     }
 
     private void RefreshBazaarTab()
@@ -191,7 +187,14 @@ public class MarketUIController : MonoBehaviour
                 if (slot == null)
                     continue;
 
-                slot.Bind(item, 0, MarketManager.Instance.GetBuyPrice(item), selectedBuyer, MarketSlotUI.SlotMode.Buy);
+                slot.Bind(
+                    item,
+                    0,
+                    MarketManager.Instance.GetBuyPrice(item),
+                    selectedBuyer,
+                    MarketSlotUI.SlotMode.Buy,
+                    MarketManager.Instance.GetQueuedBuyAmount(item),
+                    UpdateDispatchInfo);
                 spawnedBuySlots.Add(slot);
             }
         }
@@ -202,16 +205,20 @@ public class MarketUIController : MonoBehaviour
             for (int i = 0; i < sellableItems.Count; i++)
             {
                 var info = sellableItems[i];
-                if (selectedBuyer != null && !selectedBuyer.WillBuyItem(info.Item))
-                    continue;
-
                 GameObject slotObj = Instantiate(marketSlotPrefab, sellListParent);
                 MarketSlotUI slot = slotObj.GetComponent<MarketSlotUI>();
                 if (slot == null)
                     continue;
 
                 int price = MarketManager.Instance.GetSellPrice(info.Item, selectedBuyer);
-                slot.Bind(info.Item, info.TotalCount, price, selectedBuyer, MarketSlotUI.SlotMode.Sell);
+                slot.Bind(
+                    info.Item,
+                    info.TotalCount,
+                    price,
+                    selectedBuyer,
+                    MarketSlotUI.SlotMode.Sell,
+                    MarketManager.Instance.GetQueuedSellAmount(info.Item),
+                    UpdateDispatchInfo);
                 spawnedSellSlots.Add(slot);
             }
         }
@@ -232,7 +239,7 @@ public class MarketUIController : MonoBehaviour
         if (sellTotalText != null) sellTotalText.text = $"+{sell}";
         if (netTotalText != null)
         {
-            string sign = net >= 0 ? "+" : "";
+            string sign = net >= 0 ? "+" : string.Empty;
             netTotalText.text = $"{sign}{net}";
         }
 
@@ -250,7 +257,7 @@ public class MarketUIController : MonoBehaviour
         }
 
         if (dispatchButton != null)
-            dispatchButton.interactable = !MarketManager.Instance.DispatchInProgress;
+            dispatchButton.interactable = !MarketManager.Instance.DispatchInProgress && MarketManager.Instance.HasQueuedTrade();
     }
 
     private void OnDispatch()

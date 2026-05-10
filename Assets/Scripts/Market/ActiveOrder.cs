@@ -38,6 +38,7 @@ public class ActiveOrder
     private float executionTimeRemaining;
 
     public float TimeRemaining => IsAccepted ? executionTimeRemaining : offerTimeRemaining;
+    public bool IsExpired => TimeRemaining <= 0f;
 
     public bool IsCompleted
     {
@@ -53,30 +54,6 @@ public class ActiveOrder
         }
     }
 
-    public bool IsExpired => TimeRemaining <= 0f;
-
-    public int RequestedAmountTotal
-    {
-        get
-        {
-            int sum = 0;
-            for (int i = 0; i < lines.Count; i++)
-                sum += lines[i].RequestedAmount;
-            return sum;
-        }
-    }
-
-    public int DeliveredAmountTotal
-    {
-        get
-        {
-            int sum = 0;
-            for (int i = 0; i < lines.Count; i++)
-                sum += lines[i].DeliveredAmount;
-            return sum;
-        }
-    }
-
     public float CurrentMultiplier
     {
         get
@@ -89,10 +66,10 @@ public class ActiveOrder
 
             float elapsed = TotalExecutionLifetimeSeconds - Mathf.Max(0f, executionTimeRemaining);
             float effective = Mathf.Min(DecayDurationSeconds, elapsed);
-            int totalSteps = Mathf.Max(1, Mathf.CeilToInt(DecayDurationSeconds / Mathf.Max(1f, MultiplierStepSeconds)));
-            int currentStep = Mathf.Clamp(Mathf.FloorToInt(effective / Mathf.Max(1f, MultiplierStepSeconds)), 0, totalSteps);
-            float t = currentStep / (float)totalSteps;
-            return Mathf.Lerp(InitialMultiplier, 1f, t);
+            float step = Mathf.Max(1f, MultiplierStepSeconds);
+            int totalSteps = Mathf.Max(1, Mathf.CeilToInt(DecayDurationSeconds / step));
+            int currentStep = Mathf.Clamp(Mathf.FloorToInt(effective / step), 0, totalSteps);
+            return Mathf.Lerp(InitialMultiplier, 1f, currentStep / (float)totalSteps);
         }
     }
 
@@ -140,12 +117,13 @@ public class ActiveOrder
         executionTimeRemaining = TotalExecutionLifetimeSeconds;
     }
 
-    public void Tick(float deltaTime)
+    public void Tick(float dt)
     {
+        dt = Mathf.Max(0f, dt);
         if (IsAccepted)
-            executionTimeRemaining = Mathf.Max(0f, executionTimeRemaining - Mathf.Max(0f, deltaTime));
+            executionTimeRemaining = Mathf.Max(0f, executionTimeRemaining - dt);
         else
-            offerTimeRemaining = Mathf.Max(0f, offerTimeRemaining - Mathf.Max(0f, deltaTime));
+            offerTimeRemaining = Mathf.Max(0f, offerTimeRemaining - dt);
     }
 
     public int CalculateReward()
@@ -158,12 +136,11 @@ public class ActiveOrder
         if (inventory == null)
             return 0;
 
-        int deliveredTotal = 0;
-
+        int delivered = 0;
         for (int i = 0; i < lines.Count; i++)
-            deliveredTotal += DeliverLineFromInventory(i, inventory);
+            delivered += DeliverLineFromInventory(i, inventory);
 
-        return deliveredTotal;
+        return delivered;
     }
 
     public int DeliverLineFromInventory(int lineIndex, InventoryManager inventory)
