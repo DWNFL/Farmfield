@@ -1,16 +1,11 @@
-using UnityEngine;
-
-public class CellType : MonoBehaviour
+public enum TileType
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    Ground,
+    Soil
+}
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+public class CellType : UnityEngine.MonoBehaviour
+{
+    // This class can be used to tag GameObjects with a tile type if needed.
+    public TileType type;
 }

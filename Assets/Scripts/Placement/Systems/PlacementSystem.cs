@@ -235,7 +235,31 @@ public class PlacementSystem : MonoBehaviour
 
     private bool CheckPlacementValidity(Vector3Int gridPosition)
     {
-        return gridOccupancyData.CanPlaceObjectAt(gridPosition, selectedPlaceableItem.Size);
+        bool occupancyValid = gridOccupancyData.CanPlaceObjectAt(gridPosition, selectedPlaceableItem.Size);
+        if (!occupancyValid) return false;
+
+        // Проверка типа плитки для растений
+        if (selectedPlaceableItem is PlantPlaceableItemData)
+        {
+            if (GridTileSystem.Instance != null)
+            {
+                // Проверяем все клетки, которые будет занимать растение
+                // (Для простоты обычно растения 1x1, но поддержим размер)
+                for (int x = 0; x < selectedPlaceableItem.Size.x; x++)
+                {
+                    for (int y = 0; y < selectedPlaceableItem.Size.y; y++)
+                    {
+                        Vector3Int pos = gridPosition + new Vector3Int(x, 0, y);
+                        if (GridTileSystem.Instance.GetTileType(pos) != TileType.Soil)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     public PlacedPlantBehaviour GetPlantAtGridPosition(Vector3Int gridPosition)
