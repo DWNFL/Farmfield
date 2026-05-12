@@ -5,6 +5,11 @@ public class PlacedPlantBehaviour : MonoBehaviour
     private PlantPlaceableItemData plantData;
     private PlantRuntimeState state;
     private GameObject currentVisual;
+    private Vector3Int gridPosition;
+
+    [Header("Watering")]
+    [SerializeField] private float waterDuration = 120f; // 2 минуты
+    private bool wasWateredLastFrame;
 
     public void Init(PlantPlaceableItemData data, PlantRuntimeState existingState = null)
     {
@@ -26,11 +31,36 @@ public class PlacedPlantBehaviour : MonoBehaviour
         }
 
         UpdateVisual();
+        
+        // Определяем позицию в сетке
+        if (PlacementSystem.Instance != null)
+        {
+            gridPosition = PlacementSystem.Instance.GetGrid().WorldToCell(transform.position);
+        }
+        
+        wasWateredLastFrame = state.WaterTimer > 0;
     }
 
     private void Update()
     {
         if (plantData == null || plantData.GrowthConfig == null) return;
+
+        // Обновляем таймер воды
+        if (state.WaterTimer > 0)
+        {
+            state.WaterTimer -= Time.deltaTime;
+            
+            // Если вода закончилась в этом кадре
+            if (state.WaterTimer <= 0)
+            {
+                state.WaterTimer = 0;
+                UpdateSoilVisual();
+                Debug.Log($"Почва в {gridPosition} высохла.");
+            }
+        }
+
+        // Если не полито — не растем
+        if (state.WaterTimer <= 0) return;
 
         var config = plantData.GrowthConfig;
 
@@ -60,6 +90,28 @@ public class PlacedPlantBehaviour : MonoBehaviour
             state.TimeInCurrentStage = 0f;
             state.CurrentStageIndex++;
             UpdateVisual();
+        }
+    }
+
+    public bool Water()
+    {
+        bool isAlreadyWatered = state.WaterTimer > 0;
+        state.WaterTimer = waterDuration;
+        
+        if (!isAlreadyWatered)
+        {
+            UpdateSoilVisual();
+            Debug.Log($"Растение в {gridPosition} полито.");
+        }
+        
+        return true;
+    }
+
+    private void UpdateSoilVisual()
+    {
+        if (TileVisualManager.Instance != null)
+        {
+            TileVisualManager.Instance.SetTileWatered(gridPosition, state.WaterTimer > 0);
         }
     }
 

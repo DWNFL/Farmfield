@@ -28,11 +28,10 @@ public class HoeAction : ToolAction
 
         // Преобразуем мировую позицию в grid позицию
         Vector3Int gridPosition = grid.WorldToCell(worldPosition);
+        Debug.Log($"[HoeAction] Попытка использовать мотыгу в {gridPosition} (world: {worldPosition})");
         
-        // Проверяем, нет ли уже чего-то на этой клетке (необязательно, но мотыга обычно работает на пустой земле)
-        // Но по заданию просто меняем тип с ground на soil.
-
         TileType currentType = tileSystem.GetTileType(gridPosition);
+        Debug.Log($"[HoeAction] Текущий тип клетки: {currentType}");
         if (currentType == TileType.Ground)
         {
             Debug.Log($"Вспахиваю землю в {gridPosition}");

@@ -7,4 +7,5 @@ public class PlantRuntimeState
     public float TimeInCurrentStage;
     public int HarvestCount;
     public bool IsInFruitStage;
+    public float WaterTimer;
 }
