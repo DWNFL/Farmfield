@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,18 +14,16 @@ public class OrderCardUI : MonoBehaviour
     [Header("Timers")]
     [SerializeField] private TMP_Text lifeTimerText;
     [SerializeField] private TMP_Text nextDropTimerText;
-    [SerializeField] private Slider lifeTimerSlider;
 
     [Header("Summary")]
-    [SerializeField] private TMP_Text linesSummaryText;
+    [SerializeField] private Transform linesSummaryIconsParent;
+    [SerializeField] private TMP_Text singleLineAmountText;
+    [SerializeField] private Vector2 singleLineIconSize = new(48f, 48f);
+    [SerializeField] private Vector2 multiLineIconSize = new(24f, 24f);
     [SerializeField] private Button expandButton;
     [SerializeField] private GameObject linesDetailsRoot;
     [SerializeField] private Transform linesDetailsParent;
     [SerializeField] private GameObject orderLinePrefab;
-
-    [Header("Line Buttons")]
-    [SerializeField] private Button[] deliverLineButtons;
-    [SerializeField] private TMP_Text[] deliverLineLabels;
 
     [Header("Actions")]
     [SerializeField] private Button acceptButton;
@@ -34,8 +31,6 @@ public class OrderCardUI : MonoBehaviour
     [SerializeField] private Button deliverAllButton;
 
     [Header("State Visuals")]
-    [SerializeField] private GameObject availableStateRoot;
-    [SerializeField] private GameObject activeStateRoot;
     [SerializeField] private Image cardBackground;
     [SerializeField] private Color availableBackgroundColor = Color.white;
     [SerializeField] private Color activeBackgroundColor = new Color(0.94f, 0.98f, 1f, 1f);
@@ -44,6 +39,7 @@ public class OrderCardUI : MonoBehaviour
     private bool isActive;
     private bool expanded;
     private readonly List<OrderLineUI> spawnedLineViews = new();
+    private readonly List<GameObject> spawnedSummaryIcons = new();
 
     public void BindAvailable(ActiveOrder order)
     {
@@ -84,13 +80,6 @@ public class OrderCardUI : MonoBehaviour
         if (buyerNameText != null)
             buyerNameText.text = boundOrder.Buyer != null ? boundOrder.Buyer.BuyerName : "Buyer";
 
-        if (lifeTimerSlider != null)
-        {
-            lifeTimerSlider.maxValue = isActive
-                ? Mathf.Max(1f, boundOrder.TotalExecutionLifetimeSeconds)
-                : Mathf.Max(1f, boundOrder.OfferLifetimeSeconds);
-        }
-
         if (expandButton != null)
         {
             expandButton.onClick.RemoveAllListeners();
@@ -99,39 +88,9 @@ public class OrderCardUI : MonoBehaviour
         }
 
         RebuildLineViews();
-        BindLineButtons();
+        RebuildSummaryIcons();
         UpdateSummary();
         UpdateTimer();
-    }
-
-    private void BindLineButtons()
-    {
-        int count = boundOrder != null ? boundOrder.Lines.Count : 0;
-        if (deliverLineButtons == null)
-            return;
-
-        for (int i = 0; i < deliverLineButtons.Length; i++)
-        {
-            bool active = isActive && i < count;
-            Button btn = deliverLineButtons[i];
-            if (btn == null)
-                continue;
-
-            btn.onClick.RemoveAllListeners();
-            btn.gameObject.SetActive(active && expanded);
-
-            int idx = i;
-            if (active)
-                btn.onClick.AddListener(() => OnDeliverLine(idx));
-
-            if (deliverLineLabels != null && i < deliverLineLabels.Length && deliverLineLabels[i] != null && active)
-            {
-                ActiveOrderLine line = boundOrder.Lines[i];
-                deliverLineLabels[i].text = line.Item != null
-                    ? $"Load {line.Item.ItemName}"
-                    : "Load line";
-            }
-        }
     }
 
     public void UpdateTimer()
@@ -145,9 +104,7 @@ public class OrderCardUI : MonoBehaviour
 
         if (lifeTimerText != null)
         {
-            lifeTimerText.text = isActive
-                ? $"Contract ends: {m:D2}:{s:D2}"
-                : $"Offer expires: {m:D2}:{s:D2}";
+            lifeTimerText.text = $"{m:D2}:{s:D2}";
             lifeTimerText.color = rem < 30f ? Color.red : Color.white;
         }
 
@@ -155,26 +112,24 @@ public class OrderCardUI : MonoBehaviour
         {
             float toDrop = boundOrder.TimeToNextMultiplierDrop;
             if (!isActive)
-                nextDropTimerText.text = "Drop starts after accept";
+                nextDropTimerText.text = string.Empty;
             else if (toDrop <= 0f || boundOrder.CurrentMultiplier <= 1f)
-                nextDropTimerText.text = "Next drop: 1x lock";
+                nextDropTimerText.text = "1x";
             else
             {
                 int dm = Mathf.FloorToInt(toDrop / 60f);
                 int ds = Mathf.FloorToInt(toDrop % 60f);
-                nextDropTimerText.text = $"Next drop: {dm:D2}:{ds:D2}";
+                nextDropTimerText.text = $"{dm:D2}:{ds:D2}";
             }
         }
-
-        if (lifeTimerSlider != null)
-            lifeTimerSlider.value = rem;
 
         if (rewardText != null)
             rewardText.text = $"{boundOrder.CalculateReward()}";
 
         if (multiplierText != null)
-            multiplierText.text = $"x{boundOrder.CurrentMultiplier:F2}";
+            multiplierText.text = $"x{boundOrder.CurrentMultiplier:F1}";
 
+        UpdateSingleLineAmount();
         UpdateSummary();
     }
 
@@ -182,26 +137,6 @@ public class OrderCardUI : MonoBehaviour
     {
         if (boundOrder == null)
             return;
-
-        if (linesSummaryText != null)
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < boundOrder.Lines.Count; i++)
-            {
-                ActiveOrderLine line = boundOrder.Lines[i];
-                if (line == null || line.Item == null)
-                    continue;
-
-                if (sb.Length > 0)
-                    sb.Append('\n');
-
-                sb.Append(isActive
-                    ? $"{line.Item.ItemName}: {line.DeliveredAmount}/{line.RequestedAmount}"
-                    : $"{line.Item.ItemName}: x{line.RequestedAmount}");
-            }
-
-            linesSummaryText.text = sb.ToString();
-        }
 
         RefreshLineViews();
     }
@@ -216,18 +151,6 @@ public class OrderCardUI : MonoBehaviour
     {
         if (linesDetailsRoot != null)
             linesDetailsRoot.SetActive(visible);
-
-        if (deliverLineButtons == null)
-            return;
-
-        for (int i = 0; i < deliverLineButtons.Length; i++)
-        {
-            if (deliverLineButtons[i] == null)
-                continue;
-
-            bool canShow = isActive && boundOrder != null && i < boundOrder.Lines.Count;
-            deliverLineButtons[i].gameObject.SetActive(visible && canShow);
-        }
     }
 
     private void OnAccept()
@@ -258,12 +181,15 @@ public class OrderCardUI : MonoBehaviour
     {
         ClearLineViews();
 
-        if (boundOrder == null || orderLinePrefab == null)
+        if (boundOrder == null || orderLinePrefab == null || boundOrder.Lines.Count <= 1)
             return;
 
         Transform parent = linesDetailsParent != null
             ? linesDetailsParent
-            : linesDetailsRoot != null ? linesDetailsRoot.transform : transform;
+            : linesDetailsRoot != null ? linesDetailsRoot.transform : null;
+
+        if (parent == null)
+            return;
 
         for (int i = 0; i < boundOrder.Lines.Count; i++)
         {
@@ -275,6 +201,41 @@ public class OrderCardUI : MonoBehaviour
             int idx = i;
             lineView.Bind(boundOrder.Lines[i], isActive, () => OnDeliverLine(idx));
             spawnedLineViews.Add(lineView);
+        }
+    }
+
+    private void RebuildSummaryIcons()
+    {
+        ClearSummaryIcons();
+        UpdateSingleLineAmount();
+
+        if (boundOrder == null || linesSummaryIconsParent == null)
+            return;
+
+        bool singleLine = boundOrder.Lines.Count == 1;
+        Vector2 iconSize = singleLine ? singleLineIconSize : multiLineIconSize;
+
+        for (int i = 0; i < boundOrder.Lines.Count; i++)
+        {
+            ActiveOrderLine line = boundOrder.Lines[i];
+            if (line?.Item == null || line.Item.Icon == null)
+                continue;
+
+            GameObject iconObj = new GameObject($"{line.Item.ItemName}_SummaryIcon", typeof(RectTransform), typeof(Image));
+            iconObj.transform.SetParent(linesSummaryIconsParent, false);
+
+            var rect = iconObj.GetComponent<RectTransform>();
+            rect.sizeDelta = iconSize;
+
+            var layout = iconObj.AddComponent<LayoutElement>();
+            layout.preferredWidth = iconSize.x;
+            layout.preferredHeight = iconSize.y;
+
+            Image image = iconObj.GetComponent<Image>();
+            image.sprite = line.Item.Icon;
+            image.preserveAspect = true;
+
+            spawnedSummaryIcons.Add(iconObj);
         }
     }
 
@@ -302,14 +263,33 @@ public class OrderCardUI : MonoBehaviour
         spawnedLineViews.Clear();
     }
 
+    private void ClearSummaryIcons()
+    {
+        for (int i = 0; i < spawnedSummaryIcons.Count; i++)
+            if (spawnedSummaryIcons[i] != null)
+                Destroy(spawnedSummaryIcons[i]);
+
+        spawnedSummaryIcons.Clear();
+    }
+
+    private void UpdateSingleLineAmount()
+    {
+        if (singleLineAmountText == null)
+            return;
+
+        if (boundOrder == null || boundOrder.Lines.Count != 1)
+        {
+            singleLineAmountText.gameObject.SetActive(false);
+            return;
+        }
+
+        ActiveOrderLine line = boundOrder.Lines[0];
+        singleLineAmountText.gameObject.SetActive(true);
+        singleLineAmountText.text = $"x{Mathf.Max(1, line.RequestedAmount)}";
+    }
+
     private void ApplyStateVisuals()
     {
-        if (availableStateRoot != null)
-            availableStateRoot.SetActive(!isActive);
-
-        if (activeStateRoot != null)
-            activeStateRoot.SetActive(isActive);
-
         if (cardBackground != null)
             cardBackground.color = isActive ? activeBackgroundColor : availableBackgroundColor;
     }

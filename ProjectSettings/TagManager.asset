@@ -44,6 +44,9 @@ TagManager:
   - name: Plant
     uniqueID: 2029095177
     locked: 0
+  - name: World Object
+    uniqueID: 2383735355
+    locked: 0
   m_RenderingLayers:
   - Default
   - Light Layer 1

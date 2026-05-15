@@ -8,9 +8,7 @@ public class MarketUIController : MonoBehaviour
     [Header("Main")]
     [SerializeField] private GameObject marketPanel;
 
-    [Header("Tabs")]
-    [SerializeField] private Button bazaarTabButton;
-    [SerializeField] private Button ordersTabButton;
+    [Header("Sections")]
     [SerializeField] private GameObject bazaarContent;
     [SerializeField] private GameObject ordersContent;
 
@@ -44,12 +42,6 @@ public class MarketUIController : MonoBehaviour
 
     private void Start()
     {
-        if (bazaarTabButton != null)
-            bazaarTabButton.onClick.AddListener(() => SwitchTab(0));
-
-        if (ordersTabButton != null)
-            ordersTabButton.onClick.AddListener(() => SwitchTab(1));
-
         if (buyerDropdown != null)
             buyerDropdown.interactable = false;
 
@@ -117,12 +109,6 @@ public class MarketUIController : MonoBehaviour
     {
         if (isOpen) Close();
         else Open();
-    }
-
-    public void SwitchTab(int tabIndex)
-    {
-        _ = tabIndex;
-        ShowAllSections();
     }
 
     private void ShowAllSections()

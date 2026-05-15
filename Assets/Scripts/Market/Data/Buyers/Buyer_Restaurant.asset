@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5768b3366c5cd6b4ea25960588978c2c, type: 3}
   m_Name: Buyer_Restaurant
   m_EditorClassIdentifier: Assembly-CSharp::BuyerProfileSO
-  BuyerName: 
+  BuyerName: "\u0420\u0435\u0441\u0442\u043E\u0440\u0430\u043D"
   BuyerIcon: {fileID: 0}
   Description: 
   OrderIntervalSeconds: 120

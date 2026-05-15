@@ -13,7 +13,11 @@ MonoBehaviour:
   m_Name: Order_Store_MixedVegetables
   m_EditorClassIdentifier: Assembly-CSharp::OrderDataSO
   Buyer: {fileID: 0}
-  RequestedLines: []
+  RequestedLines:
+  - Item: {fileID: 11400000, guid: 17ab8cffddab3d749844dbaa39220695, type: 2}
+    Amount: 10
+  - Item: {fileID: 11400000, guid: 17733b9485e57004ba92a033859a63cc, type: 2}
+    Amount: 10
   RequestedItem: {fileID: 0}
   RequestedAmount: 10
   RewardCoins: 50

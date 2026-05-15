@@ -549,7 +549,6 @@ public class MarketManager : MonoBehaviour
 
     private static int ResolveBaseReward(OrderDataSO template, List<ActiveOrderLine> lines)
     {
-        int configured = Mathf.Max(1, template.RewardCoins);
         int itemBased = 0;
         for (int i = 0; i < lines.Count; i++)
         {
@@ -560,7 +559,7 @@ public class MarketManager : MonoBehaviour
             itemBased += Mathf.Max(1, line.Item.Price) * Mathf.Max(1, line.RequestedAmount);
         }
 
-        return Mathf.Max(configured, itemBased);
+        return itemBased > 0 ? itemBased : Mathf.Max(1, template.RewardCoins);
     }
 
     private bool IsBazaarBuyer(BazaarProfileSO buyer)

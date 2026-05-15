@@ -13,12 +13,9 @@ public class MarketSlotUI : MonoBehaviour
 
     [SerializeField] private Image itemIcon;
     [SerializeField] private TMP_Text itemNameText;
-    [SerializeField] private TMP_Text amountText;
     [SerializeField] private TMP_Text priceText;
     [SerializeField] private TMP_Text unitPriceText;
     [SerializeField] private TMP_InputField quantityInput;
-    [SerializeField] private Button applyButton;
-    [SerializeField] private TMP_Text applyButtonText;
     [SerializeField] private Button maxButton;
 
     private SellableItem boundItem;
@@ -49,9 +46,6 @@ public class MarketSlotUI : MonoBehaviour
         if (itemNameText != null)
             itemNameText.text = item != null ? item.ItemName : "Item";
 
-        if (amountText != null)
-            amountText.text = slotMode == SlotMode.Sell ? $"Have: {boundCount}" : "Buy";
-
         if (unitPriceText != null)
             unitPriceText.text = $"{boundPricePerUnit} ea";
 
@@ -61,16 +55,6 @@ public class MarketSlotUI : MonoBehaviour
             quantityInput.text = Mathf.Max(0, queuedAmount).ToString();
             quantityInput.onValueChanged.AddListener(OnQuantityChanged);
         }
-
-        if (applyButton != null)
-        {
-            applyButton.onClick.RemoveAllListeners();
-            applyButton.onClick.AddListener(ApplyQueuedAmount);
-            applyButton.interactable = item != null;
-        }
-
-        if (applyButtonText != null)
-            applyButtonText.text = "Set";
 
         if (maxButton != null)
         {

@@ -12,8 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 514abfcead7507042ad0070bfc22a1b5, type: 3}
   m_Name: Order_Restaurant_Tomatoes
   m_EditorClassIdentifier: Assembly-CSharp::OrderDataSO
-  Buyer: {fileID: 0}
-  RequestedLines: []
+  Buyer: {fileID: 11400000, guid: 0d4c8bfb771ef194ba1dfe7ae631ecc0, type: 2}
+  RequestedLines:
+  - Item: {fileID: 11400000, guid: 17ab8cffddab3d749844dbaa39220695, type: 2}
+    Amount: 10
   RequestedItem: {fileID: 0}
   RequestedAmount: 10
   RewardCoins: 50

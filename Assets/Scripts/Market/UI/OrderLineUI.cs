@@ -6,7 +6,6 @@ using UnityEngine.UI;
 public class OrderLineUI : MonoBehaviour
 {
     [SerializeField] private Image itemIcon;
-    [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text amountText;
     [SerializeField] private TMP_Text priceText;
     [SerializeField] private Button deliverButton;
@@ -20,9 +19,6 @@ public class OrderLineUI : MonoBehaviour
 
         if (itemIcon != null && line?.Item != null && line.Item.Icon != null)
             itemIcon.sprite = line.Item.Icon;
-
-        if (itemNameText != null)
-            itemNameText.text = line?.Item != null ? line.Item.ItemName : "Item";
 
         if (amountText != null)
         {

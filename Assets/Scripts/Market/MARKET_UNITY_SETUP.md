@@ -223,31 +223,75 @@ Asset:
 
 - `MarketUIRoot`
 - `MarketPanel`
-- `Left_Bazaar`
+- `Left_Mart`
 - `Right_Orders`
+
+Иерархия может быть такой:
+
+```text
+MarketUIRoot
+└─ MarketPanel
+   ├─ Left_Mart
+   │  ├─ BuyTitle
+   │  ├─ BuyListParent
+   │  ├─ BuyTotalText
+   │  ├─ SellTitle
+   │  ├─ SellListParent
+   │  ├─ SellTotalText
+   │  ├─ NetTotalText
+   │  ├─ DispatchTimerText
+   │  └─ DispatchButton
+   └─ Right_Orders
+      ├─ AvailableTitle
+      ├─ AvailableOrdersParent
+      ├─ ActiveTitle
+      └─ ActiveOrdersParent
+```
+
+`Left_Mart` и `Right_Orders` - обычные UI-объекты с `RectTransform`. Для них удобно добавить `Vertical Layout Group`.
+
+Для контейнеров карточек создай пустые UI-объекты:
+
+- `BuyListParent`
+- `SellListParent`
+- `AvailableOrdersParent`
+- `ActiveOrdersParent`
+
+На эти контейнеры удобно добавить:
+
+- `Vertical Layout Group`
+- `Content Size Fitter`, если контейнер должен подстраиваться по высоте
+
+Текстовые объекты создай через:
+
+- `UI -> Text - TextMeshPro`
+
+Кнопку отправки создай через:
+
+- `UI -> Button - TextMeshPro`
 
 На `MarketUIRoot` добавь `MarketUIController`.
 
 Привязки `MarketUIController`:
 
 - `marketPanel` -> `MarketPanel`
-- `bazaarContent` -> `Left_Bazaar`
+- `bazaarContent` -> `Left_Mart`
 - `ordersContent` -> `Right_Orders`
-- `buyListParent` -> контейнер карточек закупки
-- `sellListParent` -> контейнер карточек продажи
+- `buyListParent` -> `BuyListParent`
+- `sellListParent` -> `SellListParent`
 - `marketSlotPrefab` -> `MarketSlotPrefab`
-- `buyTotalText` -> сумма закупки
-- `sellTotalText` -> сумма продажи
-- `netTotalText` -> итог сделки
-- `dispatchTimerText` -> таймер грузовика
-- `dispatchButton` -> кнопка отправки
-- `availableOrdersParent` -> контейнер доступных контрактов
-- `activeOrdersParent` -> контейнер принятых контрактов
+- `buyTotalText` -> `BuyTotalText`
+- `sellTotalText` -> `SellTotalText`
+- `netTotalText` -> `NetTotalText`
+- `dispatchTimerText` -> `DispatchTimerText`
+- `dispatchButton` -> `DispatchButton`
+- `availableOrdersParent` -> `AvailableOrdersParent`
+- `activeOrdersParent` -> `ActiveOrdersParent`
 - `orderCardPrefab` -> `OrderCardPrefab`
-- `coinsText` -> деньги игрока
+- `coinsText` -> текст денег игрока, если хочешь показывать его в панели
 - `buyerDropdown` -> опционально
 
-`bazaarTabButton` и `ordersTabButton` можно оставить пустыми. UI показывает базар и контракты одновременно.
+UI показывает базар и контракты одновременно.
 
 ## 8. MarketSlotPrefab
 
@@ -259,24 +303,18 @@ Asset:
 
 - `ItemIcon` - `Image`
 - `ItemNameText` - `TMP_Text`
-- `AmountText` - `TMP_Text`
 - `PriceText` - `TMP_Text`
 - `UnitPriceText` - `TMP_Text`
 - `QuantityInput` - `TMP_InputField`
-- `ApplyButton` - `Button`
-- `ApplyButtonText` - `TMP_Text`
 - `MaxButton` - `Button`
 
 Привязки:
 
 - `itemIcon` -> `ItemIcon`
 - `itemNameText` -> `ItemNameText`
-- `amountText` -> `AmountText`
 - `priceText` -> `PriceText`
 - `unitPriceText` -> `UnitPriceText`
 - `quantityInput` -> `QuantityInput`
-- `applyButton` -> `ApplyButton`
-- `applyButtonText` -> `ApplyButtonText`
 - `maxButton` -> `MaxButton`
 
 Поведение:
@@ -297,7 +335,6 @@ Asset:
 Элементы:
 
 - `ItemIcon` - `Image`
-- `ItemNameText` - `TMP_Text`
 - `AmountText` - `TMP_Text`
 - `PriceText` - `TMP_Text`
 - `DeliverButton` - `Button`
@@ -306,7 +343,6 @@ Asset:
 Привязки:
 
 - `itemIcon` -> `ItemIcon`
-- `itemNameText` -> `ItemNameText`
 - `amountText` -> `AmountText`
 - `priceText` -> `PriceText`
 - `deliverButton` -> `DeliverButton`
@@ -332,8 +368,7 @@ Asset:
 - `MultiplierText` - `TMP_Text`
 - `LifeTimerText` - `TMP_Text`
 - `NextDropTimerText` - `TMP_Text`
-- `LifeTimerSlider` - `Slider`, опционально
-- `LinesSummaryText` - `TMP_Text`
+- `LinesSummaryIconsParent` - контейнер маленьких иконок товаров контракта
 - `ExpandButton` - `Button`
 - `LinesDetailsRoot` - объект раскрытия
 - `LinesDetailsParent` - контейнер строк
@@ -349,8 +384,7 @@ Asset:
 - `multiplierText` -> `MultiplierText`
 - `lifeTimerText` -> `LifeTimerText`
 - `nextDropTimerText` -> `NextDropTimerText`
-- `lifeTimerSlider` -> `LifeTimerSlider`
-- `linesSummaryText` -> `LinesSummaryText`
+- `linesSummaryIconsParent` -> `LinesSummaryIconsParent`
 - `expandButton` -> `ExpandButton`
 - `linesDetailsRoot` -> `LinesDetailsRoot`
 - `linesDetailsParent` -> `LinesDetailsParent`
@@ -361,13 +395,16 @@ Asset:
 
 Опционально:
 
-- `availableStateRoot`
-- `activeStateRoot`
 - `cardBackground`
 - `availableBackgroundColor`
 - `activeBackgroundColor`
 
-`deliverLineButtons[]` и `deliverLineLabels[]` можно не заполнять, если используется `OrderLinePrefab`.
+`LinesSummaryIconsParent` лучше сделать горизонтальным контейнером:
+
+- `RectTransform`
+- `Horizontal Layout Group`
+
+Код сам создаст в нем маленькие `Image` с иконками всех товаров контракта. Для контракта с одним товаром будет одна иконка, для контракта с несколькими товарами - несколько иконок, как на макете.
 
 ## 11. Здание рынка
 
@@ -375,7 +412,7 @@ Asset:
 
 Компоненты:
 
-- `Collider`
+- `Box Collider 2D`
 - `MarketBuilding`
 
 Поля `MarketBuilding`:
@@ -384,7 +421,7 @@ Asset:
 - `interactionDistance` -> например `5`
 - `playerTransform` -> Transform игрока
 
-`MarketBuilding` использует `OnMouseDown`, поэтому объекту нужен `Collider`, а камера должна видеть этот объект.
+`MarketBuilding` использует `OnMouseDown`, поэтому объекту нужен `Collider2D`, а камера должна видеть этот объект.
 
 ## 12. Gameplay loop
 

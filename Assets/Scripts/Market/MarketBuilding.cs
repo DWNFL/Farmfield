@@ -1,15 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Компонент здания рынка. Вешается на объект в сцене.
-/// При клике открывает UI панель рынка.
+/// Opens the market UI when the player clicks the market building.
 /// </summary>
-[RequireComponent(typeof(Collider))]
+[RequireComponent(typeof(Collider2D))]
 public class MarketBuilding : MonoBehaviour
 {
     [SerializeField] private MarketUIController marketUI;
 
-    [Tooltip("Максимальная дистанция взаимодействия (0 = без ограничений)")]
+    [Tooltip("Maximum interaction distance. Set to 0 to disable the distance check.")]
     [SerializeField] private float interactionDistance = 5f;
 
     [SerializeField] private Transform playerTransform;
@@ -18,17 +17,16 @@ public class MarketBuilding : MonoBehaviour
     {
         if (marketUI == null)
         {
-            Debug.LogWarning("MarketBuilding: MarketUIController не назначен!");
+            Debug.LogWarning("MarketBuilding: MarketUIController is not assigned.");
             return;
         }
 
-        // Проверка дистанции
         if (interactionDistance > 0f && playerTransform != null)
         {
-            float dist = Vector3.Distance(playerTransform.position, transform.position);
-            if (dist > interactionDistance)
+            float distance = Vector2.Distance(playerTransform.position, transform.position);
+            if (distance > interactionDistance)
             {
-                Debug.Log("Слишком далеко от рынка!");
+                Debug.Log("Too far from the market.");
                 return;
             }
         }
